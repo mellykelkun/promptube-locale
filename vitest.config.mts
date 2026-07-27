@@ -24,6 +24,12 @@ export default defineConfig({
         "src/app/global-error.tsx",
         "src/app/not-found.tsx",
       ],
+      thresholds: {
+        statements: 80,
+        lines: 80,
+        functions: 80,
+        branches: 65,
+      },
     },
   },
 });
