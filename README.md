@@ -57,7 +57,16 @@ contrôle.
 | `npm run test:coverage` | Tests avec rapport V8 dans `coverage/`                      |
 | `npm run format`        | Formatage Prettier des fichiers suivis par la configuration |
 | `npm run format:check`  | Vérification du formatage sans modification                 |
-| `npm run check`         | Format, lint, types, tests puis build                       |
+| `npm run check`         | Format (contrôle seul), lint, types, tests puis build       |
+| `npm run audit`         | Audit npm complet, sans correction automatique              |
+| `npm run audit:prod`    | Audit npm limité aux dépendances de production              |
+
+`npm run format` est le seul de ces scripts qualité autorisé à réécrire des fichiers.
+`npm run check`, `npm run audit` et `npm run audit:prod` sont strictement non modificatifs. Les
+audits ne font pas partie de `check` : les avis connus décrits dans
+[`docs/security-debt.md`](docs/security-debt.md) produisent actuellement un code de sortie non nul
+sans correction stable compatible. Ils restent des contrôles obligatoires avant une fusion ou une
+livraison.
 
 ## Structure
 
@@ -143,7 +152,8 @@ qui n’existent pas encore.
 ## Tests et build
 
 Le jeu de tests couvre la configuration, les erreurs, la redaction des logs, les en-têtes, le
-healthcheck et le rendu sémantique du tableau de bord :
+healthcheck et le rendu sémantique du tableau de bord. La couverture ne peut pas descendre sous 80 %
+pour les statements, lignes et fonctions, ni sous 65 % pour les branches :
 
 ```bash
 npm run test
@@ -179,4 +189,5 @@ Cette phase n’ajoute volontairement aucun :
 - base de données, cache, stockage ou service Docker.
 
 Consulter `docs/architecture.md` pour les décisions internes et `CHANGELOG.local.md` pour
-l’historique local.
+l’historique local. Le suivi des avis de dépendances non résolus se trouve dans
+`docs/security-debt.md`.

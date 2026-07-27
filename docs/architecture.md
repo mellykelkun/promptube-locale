@@ -8,16 +8,11 @@ production, base de données, cache, stockage, système de paiement ou fonctionn
 ## Frontières internes
 
 ```text
-src/app
-   │ compose les pages et Route Handlers
-   ├───────────────┐
-   ▼               ▼
-src/modules     src/shared
-   │               │
-   └──────┬────────┘
-          ▼
-      src/server
-   accès serveur uniquement
+src/app ───────────────▶ src/modules ─────▶ src/shared
+  │                           │
+  ├───────────────────────────┘
+  └── Route Handlers et
+      Server Components ─────▶ src/server ─────▶ src/shared
 ```
 
 - `app` assemble les routes Next.js ;
@@ -26,7 +21,8 @@ src/modules     src/shared
 - `server` porte la configuration privée, les erreurs HTTP, la sécurité et l’observabilité.
 
 Chaque module de `src/server` importe `server-only`. Les schémas partagés ne doivent jamais importer
-la couche serveur.
+la couche serveur. Les Client Components ne peuvent importer que des éléments compatibles avec le
+navigateur depuis `modules` ou `shared`.
 
 ## Configuration
 
@@ -103,4 +99,5 @@ Vitest s’exécute avec jsdom. Les alias TypeScript sont résolus nativement pa
 neutralise uniquement le marqueur `server-only` afin de tester les fonctions serveur sans rendre ce
 code importable par l’application cliente.
 
-La couverture V8 est générée dans `coverage/` et n’est jamais versionnée.
+La couverture V8 est générée dans `coverage/` et n’est jamais versionnée. Les seuils minimaux sont
+80 % pour les statements, lignes et fonctions, et 65 % pour les branches.

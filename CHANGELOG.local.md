@@ -32,3 +32,13 @@
 - Ajout de tests comportementaux pour la configuration, les erreurs, les logs, la sécurité, le
   healthcheck et le rendu du tableau de bord.
 - Aucun service Docker, base de données, remote ou accès à `promptube-prod` ajouté.
+
+### Revue finale de la fondation
+
+- Confirmation que `check` utilise uniquement `format:check` et ne réécrit aucun fichier.
+- Ajout de commandes d’audit npm explicites et non modificatives, volontairement séparées de `check`
+  tant que les avis connus renvoient un code non nul.
+- Ajout de seuils de couverture V8 : 80 % statements, lignes et fonctions, 65 % branches.
+- Extension de la redaction des messages de log aux sessions, identifiants et clés privées.
+- Correction du schéma des dépendances internes pour préserver la frontière `shared`/`server`.
+- Création du registre `docs/security-debt.md` pour les avis transitifs non résolus.
