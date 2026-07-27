@@ -2,8 +2,10 @@
 
 ## Portée
 
-Cette architecture couvre uniquement le socle local Next.js. Elle n’autorise aucune connexion à la
-production, base de données, cache, stockage, système de paiement ou fonctionnalité métier.
+Cette architecture couvre le socle local Next.js et ses services d’infrastructure isolés. Elle
+n’autorise aucune connexion à la production, migration, donnée métier, système de paiement ou
+fonctionnalité métier. PostgreSQL, Redis et le stockage objet sont initialisés vides et ne sont pas
+encore utilisés par le code applicatif.
 
 ## Frontières internes
 
@@ -23,6 +25,30 @@ src/app ───────────────▶ src/modules ───�
 Chaque module de `src/server` importe `server-only`. Les schémas partagés ne doivent jamais importer
 la couche serveur. Les Client Components ne peuvent importer que des éléments compatibles avec le
 navigateur depuis `modules` ou `shared`.
+
+## Frontières Docker
+
+```text
+127.0.0.1:8080
+       │
+       ▼
+admin-promptube-reverse-proxy ── frontend ── admin-promptube-app
+                                                   │
+                                           backend interne
+                              ┌────────────────────┼────────────────────┐
+                              ▼                    ▼                    ▼
+                 admin-promptube-postgres  admin-promptube-redis  admin-promptube-object-storage
+```
+
+- `promptube_admin_frontend` relie uniquement le proxy et l’application ;
+- `promptube_admin_backend` est interne et relie l’application aux trois services de données ;
+- seul le proxy publie `127.0.0.1:8080` ;
+- les trois volumes sont propres au projet Compose `promptube_admin` ;
+- les secrets sont des fichiers locaux ignorés, montés en lecture seule ;
+- aucun réseau, volume, secret ou service de `promptube-prod` n’est référencé.
+
+La présence du réseau backend ne constitue pas une connexion applicative : aucune variable de
+connexion ou bibliothèque cliente n’est ajoutée dans cette phase.
 
 ## Configuration
 
@@ -89,6 +115,7 @@ constants et ne jamais interpoler de donnée sensible.
 - rate limiting ;
 - CORS privé et canal admin vers production ;
 - télémétrie et agrégation de logs externes.
+- sauvegarde automatisée et test périodique de restauration des trois volumes.
 
 Ces protections ne doivent pas être simulées avant que leurs contrats et leur infrastructure soient
 approuvés.

@@ -42,3 +42,20 @@
 - Extension de la redaction des messages de log aux sessions, identifiants et clés privées.
 - Correction du schéma des dépendances internes pour préserver la frontière `shared`/`server`.
 - Création du registre `docs/security-debt.md` pour les avis transitifs non résolus.
+
+### Fondation Docker locale
+
+- Fusion locale validée de `chore/admin-foundation` dans `develop` avec un merge non fast-forward.
+- Création de `chore/admin-docker-foundation` depuis le merge validé.
+- Ajout du projet Compose isolé `promptube_admin` et de cinq services préfixés `admin-promptube-*`.
+- Publication exclusive du proxy Nginx sur `127.0.0.1:8080`, après inventaire des ports.
+- Ajout des réseaux `frontend` et `backend` interne, ainsi que de volumes PostgreSQL, Redis et
+  stockage objet propres au projet.
+- Ajout de secrets locaux générés, ignorés et contrôlés avec des permissions `600`.
+- Ajout d’une image Next.js standalone multi-stage et non-root basée sur Node 24.18.0.
+- Épinglage par version et digest de Node, Nginx, PostgreSQL, Redis et MinIO.
+- Ajout de healthchecks, restrictions de capacités, systèmes de fichiers en lecture seule et
+  `no-new-privileges` lorsque compatibles.
+- Ajout de scripts non destructifs pour configurer, construire, démarrer, inspecter, tester et
+  arrêter la stack sans supprimer les volumes.
+- Aucun schéma, migration, bucket métier ou connexion à `promptube-prod` ajouté.
