@@ -7,4 +7,9 @@ package-lock.json
 next-env.d.ts
 AGENTS.md
 CLAUDE.md
+.env.docker
+secrets/*
+!secrets/.gitignore
+!secrets/README.md
+!secrets/*.example
 public/*.svg

@@ -15,7 +15,16 @@
     "format:check": "prettier --check .",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run build",
     "audit": "npm audit",
-    "audit:prod": "npm audit --omit=dev"
+    "audit:prod": "npm audit --omit=dev",
+    "docker:secrets:init": "./scripts/init-docker-secrets.sh",
+    "docker:config": "./scripts/docker-compose.sh config",
+    "docker:build": "./scripts/docker-compose.sh build",
+    "docker:up": "./scripts/docker-compose.sh up -d --wait --wait-timeout 180",
+    "docker:ps": "./scripts/docker-compose.sh ps",
+    "docker:logs": "./scripts/docker-compose.sh logs --no-color --tail 200",
+    "docker:health": "./scripts/docker-health.sh",
+    "docker:verify": "./scripts/verify-docker-stack.sh",
+    "docker:down": "./scripts/docker-compose.sh down"
   },
   "dependencies": {
     "next": "16.2.12",

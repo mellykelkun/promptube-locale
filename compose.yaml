@@ -1,0 +1,198 @@
+name: promptube_admin
+
+services:
+  admin-promptube-reverse-proxy:
+    image: admin-promptube-reverse-proxy:1.29.4
+    build:
+      context: ./docker/proxy
+    depends_on:
+      admin-promptube-app:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:${ADMIN_HTTP_PORT:?ADMIN_HTTP_PORT is required}:8080"
+    networks:
+      - frontend
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:8080/nginx-health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+
+  admin-promptube-app:
+    image: admin-promptube-app:0.1.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:?NEXT_PUBLIC_APP_NAME is required}
+    depends_on:
+      admin-promptube-postgres:
+        condition: service_healthy
+      admin-promptube-redis:
+        condition: service_healthy
+      admin-promptube-object-storage:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      APP_VERSION: ${APP_VERSION:?APP_VERSION is required}
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:?NEXT_PUBLIC_APP_NAME is required}
+      NODE_ENV: production
+    expose:
+      - "3000"
+    networks:
+      - frontend
+      - backend
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+  admin-promptube-postgres:
+    image: postgres:18.4-alpine3.23@sha256:996d0920e4ff9df1fc19dacb904492f3c1ec0ec1cc338f0ad7123be7731c5f5e
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_PASSWORD_FILE: /run/secrets/admin-promptube-postgres-password
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+    expose:
+      - "5432"
+    networks:
+      - backend
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    secrets:
+      - admin-promptube-postgres-password
+    restart: unless-stopped
+    read_only: true
+    shm_size: 128mb
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+      - /var/run/postgresql:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'pg_isready --username "$$POSTGRES_USER" --dbname "$$POSTGRES_DB" --host 127.0.0.1',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  admin-promptube-redis:
+    image: redis:8.6.5-alpine3.23@sha256:cd218f4b106a332c5c992e38a9480bfb9d7e9f8f7b0ec9a0023bfa36d9a408f9
+    entrypoint: ["/usr/local/bin/admin-promptube-redis-entrypoint"]
+    expose:
+      - "6379"
+    networks:
+      - backend
+    volumes:
+      - redis-data:/data
+      - ./docker/redis/entrypoint.sh:/usr/local/bin/admin-promptube-redis-entrypoint:ro
+    secrets:
+      - admin-promptube-redis-password
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'REDISCLI_AUTH="$$(cat /run/secrets/admin-promptube-redis-password)" redis-cli
+          --no-auth-warning ping | grep -qx PONG',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  admin-promptube-object-storage:
+    image: admin-promptube-object-storage:2025-09-07
+    build:
+      context: ./docker/object-storage
+    command: ["server", "/data", "--address", ":9000", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/admin-promptube-object-storage-password
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MINIO_ROOT_USER is required}
+    expose:
+      - "9000"
+      - "9001"
+    networks:
+      - backend
+    volumes:
+      - object-storage-data:/data
+    secrets:
+      - admin-promptube-object-storage-password
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    user: "1000:1000"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: true
+
+volumes:
+  postgres-data:
+  redis-data:
+  object-storage-data:
+
+secrets:
+  admin-promptube-postgres-password:
+    file: ./secrets/postgres-password
+  admin-promptube-redis-password:
+    file: ./secrets/redis-password
+  admin-promptube-object-storage-password:
+    file: ./secrets/object-storage-password
