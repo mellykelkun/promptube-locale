@@ -10,7 +10,7 @@ describe("structured logger", () => {
       write: (_level, entry) => entries.push(entry),
     });
 
-    logger.error("Request failed token=raw-token", {
+    logger.error("Request failed token=raw-token session=raw-session private_key=raw-private-key", {
       context: {
         apiKey: "raw-api-key",
         nested: {
@@ -43,10 +43,12 @@ describe("structured logger", () => {
         name: "Error",
       },
       level: "error",
-      message: "Request failed token=[REDACTED]",
+      message: "Request failed token=[REDACTED] session=[REDACTED] private_key=[REDACTED]",
       timestamp: "2026-07-27T12:00:00.000Z",
     });
     expect(serializedEntry).not.toContain("raw-token");
+    expect(serializedEntry).not.toContain("raw-session");
+    expect(serializedEntry).not.toContain("raw-private-key");
     expect(serializedEntry).not.toContain("raw-api-key");
     expect(serializedEntry).not.toContain("raw-cookie");
     expect(serializedEntry).not.toContain("raw-password");

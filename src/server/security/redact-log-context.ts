@@ -68,7 +68,7 @@ export function redactLogContext(
 export function redactLogMessage(message: string): string {
   return message
     .replace(
-      /\b(api[_-]?key|authorization|cookie|password|passwd|secret|token)\s*[:=]\s*\S+/gi,
+      /\b(api[_-]?key|authorization|cookie|credential|password|passwd|private[_-]?key|secret|session|token)\s*[:=]\s*\S+/gi,
       "$1=[REDACTED]",
     )
     .replace(/\bBearer\s+\S+/gi, "Bearer [REDACTED]")
