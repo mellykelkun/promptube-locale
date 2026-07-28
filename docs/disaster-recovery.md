@@ -32,6 +32,15 @@ Une restauration réelle dans la base persistante n’est pas automatisée dans 
 être décidée explicitement, précédée d’une sauvegarde supplémentaire, exécutée hors service, et
 documentée dans `CHANGELOG.local.md`.
 
+Une sauvegarde peut contenir des sessions Better Auth encore actives. Après restauration réelle et
+avant réouverture de l’administration, toutes les sessions doivent être révoquées localement :
+
+```bash
+npm run admin:sessions:revoke-all
+```
+
+Cette commande ne restaure pas, ne supprime pas d’utilisateur et ne modifie pas les secrets TOTP.
+
 Interdictions permanentes :
 
 - pas de `docker compose down -v` ;

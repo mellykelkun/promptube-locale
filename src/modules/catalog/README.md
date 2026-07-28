@@ -1,6 +1,7 @@
 # Module Catalogue
 
-Responsabilité future : gestion privée des catégories, modules, versions, compatibilités et
-artefacts de préparation.
+Responsabilité : interface locale protégée de gestion des catégories, sous-catégories, modules et
+versions éditoriales.
 
-Aucune donnée métier, persistance ou opération de catalogue n’est implémentée dans la fondation.
+Ce module ne publie rien vers `promptube-prod`, ne manipule aucun ZIP, n’utilise pas MinIO et ne
+rend pas le Markdown en HTML non fiable. Les règles métier restent dans `src/server/catalog/`.

@@ -4,8 +4,9 @@
 
 PostgreSQL stocke les tables d’authentification Better Auth, les sessions persistantes, la
 configuration TOTP, les codes de secours gérés par Better Auth, le journal d’audit administratif
-local et les migrations. Aucune donnée métier, catalogue, paiement, commande, fichier ou donnée de
-`promptube-prod` n’est créée. Redis reste temporaire et n’est pas une source de vérité.
+local, les migrations et le catalogue local. Aucune donnée paiement, commande, fichier, utilisateur
+client ou donnée de `promptube-prod` n’est créée. Redis reste temporaire et n’est pas une source de
+vérité.
 
 ## Rôles PostgreSQL
 
@@ -46,7 +47,7 @@ hash de migration historique. `db:migrate` ne réapplique pas le SQL si les tabl
 déjà matérialisées ; il rafraîchit alors seulement les droits runtime/backup. Les nouvelles bases
 vides continuent d’appliquer la migration SQL versionnée.
 
-## Schéma initial
+## Schéma initial et catalogue
 
 La migration initiale crée :
 
@@ -62,6 +63,18 @@ Le journal `admin_audit_events` stocke uniquement action, résultat, acteur éve
 identifiant de corrélation, métadonnées nettoyées et horodatage. Il ne doit jamais contenir mot de
 passe, hash, cookie, token, secret TOTP, URI TOTP, code de secours ou stack trace.
 
+La migration catalogue `0001_admin_catalog_foundation.sql` ajoute :
+
+- `catalog_categories` ;
+- `catalog_subcategories` ;
+- `catalog_modules` ;
+- `catalog_module_versions`.
+
+Elle contient uniquement des `CREATE TABLE`, contraintes, clés étrangères et index. Elle ne contient
+aucun `DROP`, `TRUNCATE`, `DELETE` ni modification inutile des tables Better Auth. Les objets créés
+appartiennent au compte de migration. `db:migrate` rafraîchit ensuite les droits runtime et backup :
+CRUD pour le compte applicatif, lecture seule pour le compte backup.
+
 ## Sauvegarde et restauration
 
 Avant une migration sur la base persistante :
@@ -76,3 +89,13 @@ Ces commandes délèguent à `backup:create` et `backup:restore:test`. Les archi
 sous `.local/backup-manifests/`. Aucun dump persistant en clair n’est produit. Le test de
 restauration utilise `promptube_admin_restore_test`, sans port hôte ni volume persistant. Les
 volumes `promptube_admin_*` existants ne sont pas supprimés.
+
+Après une restauration réelle, les sessions Better Auth restaurées peuvent encore être valides.
+Avant de rouvrir l’administration, lancer explicitement :
+
+```bash
+npm run admin:sessions:revoke-all
+```
+
+La commande est idempotente, ne supprime aucun utilisateur, mot de passe, TOTP ou événement d’audit,
+et exige une confirmation hors `APP_ENV=test`.

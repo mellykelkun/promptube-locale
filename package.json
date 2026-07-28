@@ -16,6 +16,11 @@
     "test:auth": "./scripts/test-auth-all.sh auth",
     "test:auth:security": "./scripts/test-auth-all.sh security",
     "test:auth:all": "./scripts/test-auth-all.sh all",
+    "test:catalog": "./scripts/test-catalog-all.sh all",
+    "test:catalog:integration": "./scripts/test-catalog-all.sh integration",
+    "test:catalog:e2e": "./scripts/test-catalog-all.sh e2e",
+    "test:catalog:security": "./scripts/test-catalog-all.sh security",
+    "test:catalog:all": "./scripts/test-catalog-all.sh all",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "format": "prettier --write \"*.{json,md,mjs,ts,yaml,yml}\" \"compose*.yaml\" \"docs/**/*.md\" \"scripts/**/*.{js,mjs}\" \"secrets/*.md\" \"src/**/*.{css,ts,tsx,md}\" \"tests/**/*.{mjs,ts,tsx}\"",
@@ -31,6 +36,7 @@
     "db:backup": "npm run backup:create",
     "db:restore:test": "npm run backup:restore:test",
     "admin:bootstrap": "COMPOSE_PROFILES=tools ./scripts/docker-compose.sh run --rm -it admin-promptube-admin-bootstrap",
+    "admin:sessions:revoke-all": "COMPOSE_PROFILES=tools ./scripts/docker-compose.sh run --rm admin-promptube-admin-sessions-revoke-all",
     "ops:status": "node scripts/ops/status.mjs",
     "backup:create": "node scripts/ops/backup-create.mjs",
     "backup:list": "node scripts/ops/backup-list.mjs",
@@ -71,7 +77,6 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@playwright/test": "1.62.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.0",

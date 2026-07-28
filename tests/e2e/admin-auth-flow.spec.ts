@@ -450,6 +450,7 @@ test("validates the complete local admin authentication lifecycle", async ({ pag
     expect(auditMetadataText).not.toMatch(
       /\$argon2|otpauth:\/\/|authorization|cookie|session_token/i,
     );
+    await runtimeClient.query('update "user" set banned = false where id = $1', [userId]);
   } finally {
     await redis.quit().catch(() => {});
     await runtimeClient.end().catch(() => {});

@@ -6,6 +6,7 @@ project_dir="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 compose_file="$project_dir/compose.test.yaml"
 project_name="promptube_admin_test"
 mode="${1:-all}"
+playwright_test_spec="${PROMPTUBE_TEST_SPEC:-tests/e2e/admin-auth-flow.spec.ts}"
 temporary_root=""
 environment_file=""
 
@@ -88,6 +89,7 @@ prepare_environment() {
   {
     printf 'APP_VERSION=0.1.0-test\n'
     printf 'NEXT_PUBLIC_APP_NAME=Promptube Admin\n'
+    printf 'PLAYWRIGHT_TEST_SPEC=%s\n' "$playwright_test_spec"
     printf 'POSTGRES_APP_USER=promptube_admin_test_app\n'
     printf 'POSTGRES_BACKUP_USER=promptube_admin_test_backup\n'
     printf 'POSTGRES_DB=promptube_admin_test\n'
@@ -168,6 +170,8 @@ run_full_auth_validation() {
       sed -E 's/(password|secret|token|cookie|authorization)([^[:space:]]*)/[redacted]/Ig' >&2
     exit 1
   fi
+  compose --profile test-tools run --rm admin-test-sessions-revoke-all
+  compose --profile test-tools run --rm admin-test-sessions-revoke-all
   check_readiness_failure admin-test-postgres
   check_readiness_failure admin-test-redis
 

@@ -23,7 +23,7 @@ describe("admin dashboard foundation", () => {
       "aria-current",
       "page",
     );
-    expect(screen.getByText("Catalogue").closest("[aria-disabled='true']")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Catalogue/ })).toHaveAttribute("href", "/catalog");
     expect(screen.getByText(/aucune donnée ni fonctionnalité métier/i)).toBeInTheDocument();
   });
 });

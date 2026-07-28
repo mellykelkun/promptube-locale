@@ -48,7 +48,9 @@ FROM production_dependencies AS tools
 
 ENV NODE_ENV=development
 
-COPY . .
+COPY --chown=node:node . .
+
+USER node
 
 FROM base AS runner
 

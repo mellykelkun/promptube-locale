@@ -4,10 +4,10 @@
 
 Cette architecture couvre le socle local Next.js, ses services d’infrastructure isolés, PostgreSQL,
 Redis, les migrations Drizzle, l’authentification administrateur locale, le TOTP obligatoire, les
-sessions révocables, l’audit persistant et les opérations locales de sauvegarde/restauration. Elle
-n’autorise aucune connexion à la production, donnée métier, système de paiement ou fonctionnalité
-commerciale. Le stockage objet reste hors profil par défaut et n’est pas utilisé par le code
-applicatif.
+sessions révocables, l’audit persistant, les opérations locales de sauvegarde/restauration et le
+catalogue local des catégories, sous-catégories, modules et versions. Elle n’autorise aucune
+connexion à la production, publication, upload, système de paiement ou fonctionnalité commerciale.
+Le stockage objet reste hors profil par défaut et n’est pas utilisé par le code applicatif.
 
 ## Frontières internes
 
@@ -73,9 +73,9 @@ par Zod. Les mots de passe et secrets sont toujours lus par chemin de fichier se
 contenant un mot de passe n’est construite ou journalisée.
 
 PostgreSQL est la source de vérité locale des administrateurs, sessions, états TOTP, codes de
-secours gérés par Better Auth, audit et migrations. Redis reste jetable et limité aux compteurs
-temporaires. Les sauvegardes PostgreSQL chiffrées sont stockées sous `.local/` par défaut avec
-manifeste non sensible ; ce dossier est ignoré par Git et Docker.
+secours gérés par Better Auth, audit, migrations et données catalogue locales. Redis reste jetable
+et limité aux compteurs temporaires. Les sauvegardes PostgreSQL chiffrées sont stockées sous
+`.local/` par défaut avec manifeste non sensible ; ce dossier est ignoré par Git et Docker.
 
 Dans Docker, `NODE_ENV=production` active le runtime Next.js optimisé et `APP_ENV=local` décrit le
 déploiement local. Ces deux notions sont volontairement distinctes et testées. Hors Docker,
@@ -129,9 +129,13 @@ constants et ne jamais interpoler de donnée sensible.
 - hachage Argon2id des mots de passe administrateur ;
 - TOTP obligatoire sans trusted device ;
 - sessions serveur persistantes et révocables ;
+- révocation globale explicite des sessions après restauration réelle ;
 - rate limiting Redis ;
 - rôles PostgreSQL séparés pour bootstrap, migrations et runtime ;
 - audit persistant sans secret ;
+- autorisations catalogue centralisées par capacités ;
+- verrouillage optimiste des objets catalogue par `revision` ;
+- Markdown catalogue stocké en texte sans rendu HTML ;
 - réponses d’erreur et logs sans détails sensibles.
 
 ## Protections différées
@@ -144,6 +148,7 @@ constants et ne jamais interpoler de donnée sensible.
 - télémétrie et agrégation de logs externes.
 - sauvegarde automatisée et test périodique de restauration des trois volumes.
 - remplacement de MinIO par un stockage S3 activement maintenu avant toute production.
+- publication ou synchronisation du catalogue local vers `promptube-prod`.
 
 Ces protections ne doivent pas être simulées avant que leurs contrats et leur infrastructure soient
 approuvés.
@@ -157,7 +162,7 @@ code importable par l’application cliente.
 La couverture V8 est générée dans `coverage/` et n’est jamais versionnée. Les seuils minimaux sont
 80 % pour les statements, lignes et fonctions, et 65 % pour les branches.
 
-Les tests d’intégration d’authentification utilisent un projet Compose séparé,
+Les tests d’intégration d’authentification et de catalogue utilisent un projet Compose séparé,
 `promptube_admin_test`, défini dans `compose.test.yaml`. Il ne partage ni réseau, ni volume, ni
 secret avec `promptube_admin`, `promptube-prod` ou les ressources `infrastructure_*`. PostgreSQL et
 Redis y utilisent `tmpfs`; MinIO est absent. Le runner Playwright est l’image officielle

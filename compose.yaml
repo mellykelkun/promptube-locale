@@ -273,6 +273,32 @@ services:
         condition: service_healthy
     restart: "no"
 
+  admin-promptube-admin-sessions-revoke-all:
+    image: admin-promptube-tools:0.1.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: tools
+    command: ["node", "scripts/db/revoke-all-sessions.mjs"]
+    profiles:
+      - tools
+    environment:
+      ADMIN_REVOKE_ALL_SESSIONS_CONFIRM: ${ADMIN_REVOKE_ALL_SESSIONS_CONFIRM:-}
+      APP_ENV: ${APP_ENV:?APP_ENV is required}
+      POSTGRES_APP_PASSWORD_FILE: /run/secrets/admin-promptube-postgres-app-password
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_HOST: admin-promptube-postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_APP_USER:?POSTGRES_APP_USER is required}
+    networks:
+      - backend
+    secrets:
+      - admin-promptube-postgres-app-password
+    depends_on:
+      admin-promptube-postgres:
+        condition: service_healthy
+    restart: "no"
+
 networks:
   frontend:
     driver: bridge
