@@ -8,7 +8,6 @@ import { hash } from "@node-rs/argon2";
 
 const password = await readSecretFile(requireEnv("POSTGRES_APP_PASSWORD_FILE"));
 const client = await createPgClient({ password, user: requireEnv("POSTGRES_USER") });
-const rl = createInterface({ input, output });
 
 function validatePassword(value) {
   if (value.length < 14 || value.length > 128) {
@@ -16,27 +15,73 @@ function validatePassword(value) {
   }
 }
 
-async function readPassword(prompt) {
-  output.write(prompt);
-  input.setRawMode?.(true);
-  let value = "";
-  for await (const chunk of input) {
-    const char = chunk.toString("utf8");
-    if (char === "\n" || char === "\r" || char === "\u0004") {
-      output.write("\n");
-      input.setRawMode?.(false);
-      return value;
-    }
-    if (char === "\u0003") {
-      process.exit(130);
-    }
-    if (char === "\u007f") {
-      value = value.slice(0, -1);
-      continue;
-    }
-    value += char;
+async function readLine(prompt) {
+  const rl = createInterface({ input, output });
+  try {
+    return await rl.question(prompt);
+  } finally {
+    rl.close();
   }
-  return value;
+}
+
+async function readPassword(prompt) {
+  if (!input.isTTY || !output.isTTY || typeof input.setRawMode !== "function") {
+    throw new Error("Interactive password input requires a TTY.");
+  }
+
+  output.write(prompt);
+
+  return await new Promise((resolve, reject) => {
+    let value = "";
+    let settled = false;
+
+    function cleanup() {
+      input.off("data", onData);
+      input.off("error", onError);
+      output.write("\n");
+      input.setRawMode(false);
+      input.pause();
+    }
+
+    function settle(callback) {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      cleanup();
+      callback();
+    }
+
+    function onError(error) {
+      settle(() => reject(error));
+    }
+
+    function onData(chunk) {
+      for (const char of chunk.toString("utf8")) {
+        if (char === "\n" || char === "\r" || char === "\u0004") {
+          settle(() => resolve(value));
+          return;
+        }
+
+        if (char === "\u0003") {
+          settle(() => reject(new Error("Interrupted.")));
+          return;
+        }
+
+        if (char === "\u007f" || char === "\b") {
+          value = value.slice(0, -1);
+          continue;
+        }
+
+        value += char;
+      }
+    }
+
+    input.setRawMode(true);
+    input.resume();
+    input.on("data", onData);
+    input.once("error", onError);
+  });
 }
 
 async function readBootstrapInput() {
@@ -60,8 +105,8 @@ async function readBootstrapInput() {
     };
   }
 
-  const email = (await rl.question("Email administrateur: ")).trim().toLowerCase();
-  const name = (await rl.question("Nom: ")).trim();
+  const email = (await readLine("Email administrateur: ")).trim().toLowerCase();
+  const name = (await readLine("Nom: ")).trim();
   const firstPassword = await readPassword("Mot de passe: ");
   const secondPassword = await readPassword("Confirmation: ");
 
@@ -118,6 +163,5 @@ try {
   await client.query("rollback").catch(() => {});
   throw error;
 } finally {
-  rl.close();
   await client.end();
 }

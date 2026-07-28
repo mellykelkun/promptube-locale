@@ -2,6 +2,11 @@
 
 ## 2026-07-28
 
+### Correctif bootstrap administrateur local
+
+- Correction de la saisie interactive du mot de passe de `npm run admin:bootstrap` afin d’éviter
+  l’AbortError à la confirmation et de ne pas mélanger `readline` avec la lecture brute du terminal.
+
 ### Fondation d’exploitation locale post-authentification
 
 - Ajout d’un workflow de sauvegarde PostgreSQL chiffrée AES-256-GCM sans dump persistant en clair,
