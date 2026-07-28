@@ -10,7 +10,7 @@ export default async function AuditPage() {
   const events = await listRecentAuditEvents();
 
   return (
-    <AdminShell admin={current.admin}>
+    <AdminShell admin={current.admin} currentPath="/audit">
       <section aria-labelledby="audit-title" className="space-y-6">
         <div>
           <p className="text-sm font-semibold tracking-[0.16em] text-cyan-300 uppercase">Audit</p>

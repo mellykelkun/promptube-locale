@@ -14,8 +14,7 @@ const FOUNDATION_AREAS = [
 ] as const;
 
 const DEFERRED_FEATURES = [
-  "Authentification, MFA et gestion des sessions",
-  "Catalogue, modules et versions",
+  "ZIP, stockage objet métier et traitement d’image",
   "Publication vers la production",
   "Utilisateurs, commandes et paiements",
   "RBAC, audit métier et CSP finale",

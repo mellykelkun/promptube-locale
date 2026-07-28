@@ -9,9 +9,10 @@ type AdminShellProps = Readonly<{
     name: string;
   };
   children: ReactNode;
+  currentPath?: string;
 }>;
 
-export function AdminShell({ admin, children }: AdminShellProps) {
+export function AdminShell({ admin, children, currentPath = "/" }: AdminShellProps) {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 lg:grid lg:grid-cols-[18rem_1fr]">
       <aside className="border-b border-slate-800 bg-slate-950 px-4 py-5 lg:min-h-screen lg:border-r lg:border-b-0 lg:px-5 lg:py-7">
@@ -29,7 +30,7 @@ export function AdminShell({ admin, children }: AdminShellProps) {
             <p className="text-xs text-slate-400">Administration locale</p>
           </div>
         </div>
-        <AdminNavigation />
+        <AdminNavigation currentPath={currentPath} />
       </aside>
 
       <div className="min-w-0">

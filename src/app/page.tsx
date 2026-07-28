@@ -9,7 +9,7 @@ export default async function DashboardPage() {
   const current = await requireCompletedTwoFactor();
 
   return (
-    <AdminShell admin={current.admin}>
+    <AdminShell admin={current.admin} currentPath="/">
       <DashboardOverview />
     </AdminShell>
   );

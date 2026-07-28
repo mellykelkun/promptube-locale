@@ -7,8 +7,9 @@ export const ADMIN_NAVIGATION = [
     status: "active",
   },
   {
+    href: "/catalog",
     label: "Catalogue",
-    status: "planned",
+    status: "active",
   },
   {
     label: "Publications",
@@ -31,8 +32,9 @@ export const ADMIN_NAVIGATION = [
     status: "planned",
   },
   {
+    href: "/audit",
     label: "Audit",
-    status: "planned",
+    status: "active",
   },
   {
     label: "Paramètres",
