@@ -34,6 +34,7 @@ cleanup() {
     APP_VERSION=0.1.0-test \
     NEXT_PUBLIC_APP_NAME="Promptube Admin" \
     POSTGRES_APP_USER=promptube_admin_test_app \
+    POSTGRES_BACKUP_USER=promptube_admin_test_backup \
     POSTGRES_DB=promptube_admin_test \
     POSTGRES_MIGRATION_USER=promptube_admin_test_migration \
     POSTGRES_USER=promptube_admin_test \
@@ -78,6 +79,7 @@ prepare_environment() {
   create_private_secret postgres-password
   create_private_secret postgres-app-password
   create_private_secret postgres-migration-password
+  create_private_secret postgres-backup-password
   create_private_secret redis-password
   create_private_secret better-auth-secret
   create_private_secret admin-password
@@ -87,6 +89,7 @@ prepare_environment() {
     printf 'APP_VERSION=0.1.0-test\n'
     printf 'NEXT_PUBLIC_APP_NAME=Promptube Admin\n'
     printf 'POSTGRES_APP_USER=promptube_admin_test_app\n'
+    printf 'POSTGRES_BACKUP_USER=promptube_admin_test_backup\n'
     printf 'POSTGRES_DB=promptube_admin_test\n'
     printf 'POSTGRES_MIGRATION_USER=promptube_admin_test_migration\n'
     printf 'POSTGRES_USER=promptube_admin_test\n'

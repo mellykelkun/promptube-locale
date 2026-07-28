@@ -90,6 +90,8 @@ services:
     environment:
       POSTGRES_APP_PASSWORD_FILE: /run/secrets/admin-test-postgres-app-password
       POSTGRES_APP_USER: ${POSTGRES_APP_USER:?POSTGRES_APP_USER is required}
+      POSTGRES_BACKUP_PASSWORD_FILE: /run/secrets/admin-test-postgres-backup-password
+      POSTGRES_BACKUP_USER: ${POSTGRES_BACKUP_USER:?POSTGRES_BACKUP_USER is required}
       POSTGRES_BOOTSTRAP_PASSWORD_FILE: /run/secrets/admin-test-postgres-password
       POSTGRES_BOOTSTRAP_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
@@ -103,6 +105,7 @@ services:
       - admin-test-postgres-password
       - admin-test-postgres-app-password
       - admin-test-postgres-migration-password
+      - admin-test-postgres-backup-password
     depends_on:
       admin-test-postgres:
         condition: service_healthy
@@ -120,6 +123,7 @@ services:
     environment:
       POSTGRES_APP_PASSWORD_FILE: /run/secrets/admin-test-postgres-app-password
       POSTGRES_APP_USER: ${POSTGRES_APP_USER:?POSTGRES_APP_USER is required}
+      POSTGRES_BACKUP_USER: ${POSTGRES_BACKUP_USER:?POSTGRES_BACKUP_USER is required}
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
       POSTGRES_HOST: admin-test-postgres
       POSTGRES_MIGRATION_PASSWORD_FILE: /run/secrets/admin-test-postgres-migration-password
@@ -298,6 +302,8 @@ secrets:
     file: ${TEST_SECRETS_DIR:?TEST_SECRETS_DIR is required}/postgres-app-password
   admin-test-postgres-migration-password:
     file: ${TEST_SECRETS_DIR:?TEST_SECRETS_DIR is required}/postgres-migration-password
+  admin-test-postgres-backup-password:
+    file: ${TEST_SECRETS_DIR:?TEST_SECRETS_DIR is required}/postgres-backup-password
   admin-test-redis-password:
     file: ${TEST_SECRETS_DIR:?TEST_SECRETS_DIR is required}/redis-password
   admin-test-better-auth-secret:

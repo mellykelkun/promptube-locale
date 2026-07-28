@@ -96,6 +96,7 @@ run_with_safe_fallbacks() {
   export POSTGRES_USER=promptube_admin
   export POSTGRES_APP_USER=promptube_admin_app
   export POSTGRES_MIGRATION_USER=promptube_admin_migration
+  export POSTGRES_BACKUP_USER=promptube_admin_backup
   export TRUSTED_ORIGINS=http://127.0.0.1:8080
   export MINIO_ROOT_USER=promptube_admin_storage
 

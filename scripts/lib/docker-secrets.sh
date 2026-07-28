@@ -27,7 +27,7 @@ validate_secret_identity() {
   secret_name="$1"
 
   case "$secret_name" in
-    postgres-password | redis-password | object-storage-password | postgres-app-password | postgres-migration-password | better-auth-secret) ;;
+    postgres-password | redis-password | object-storage-password | postgres-app-password | postgres-migration-password | postgres-backup-password | better-auth-secret | backup-encryption-key) ;;
     *)
       secret_error "Unsupported Docker secret name."
       return 1
@@ -91,7 +91,9 @@ validate_all_docker_secrets() {
     object-storage-password \
     postgres-app-password \
     postgres-migration-password \
-    better-auth-secret
+    postgres-backup-password \
+    better-auth-secret \
+    backup-encryption-key
   do
     validate_secret_mode "$required_secret_name" || return 1
   done

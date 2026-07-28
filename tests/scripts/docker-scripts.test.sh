@@ -6,7 +6,7 @@ project_dir="$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)"
 temporary_parent="$project_dir/.tmp-tests"
 test_root=""
 test_count=0
-secret_names="postgres-password redis-password object-storage-password postgres-app-password postgres-migration-password better-auth-secret"
+secret_names="postgres-password redis-password object-storage-password postgres-app-password postgres-migration-password postgres-backup-password better-auth-secret backup-encryption-key"
 
 fail() {
   echo "Docker script test failed: $1" >&2
@@ -77,7 +77,7 @@ for secret_name in $secret_names; do
   grep -Eq '^[0-9a-f]{64}$' "$secret_path" || fail "normal creation did not use safe hexadecimal data"
 done
 assert_no_secret_output "$fixture_path"
-pass "creates six non-empty hexadecimal secrets with mode 600"
+pass "creates eight non-empty hexadecimal secrets with mode 600"
 
 before_hashes="$(
   for secret_name in $secret_names; do
@@ -162,6 +162,7 @@ new_wrapper_fixture() {
     echo "POSTGRES_USER=promptube_admin"
     echo "POSTGRES_APP_USER=promptube_admin_app"
     echo "POSTGRES_MIGRATION_USER=promptube_admin_migration"
+    echo "POSTGRES_BACKUP_USER=promptube_admin_backup"
     echo "TRUSTED_ORIGINS=http://127.0.0.1:8080"
     echo "MINIO_ROOT_USER=promptube_admin_storage"
   } >"$wrapper_path/.env.docker"

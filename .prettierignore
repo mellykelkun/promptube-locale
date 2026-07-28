@@ -3,6 +3,8 @@ node_modules
 coverage
 out
 build
+.local
+.tmp-operations-test
 package-lock.json
 next-env.d.ts
 AGENTS.md
