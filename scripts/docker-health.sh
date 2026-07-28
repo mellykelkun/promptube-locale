@@ -5,6 +5,11 @@ set -eu
 project_dir="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 compose="$project_dir/scripts/docker-compose.sh"
 
+if ! command -v docker >/dev/null 2>&1; then
+  echo "Missing required command: docker" >&2
+  exit 1
+fi
+
 for service_name in \
   admin-promptube-reverse-proxy \
   admin-promptube-app \
