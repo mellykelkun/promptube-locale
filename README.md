@@ -46,45 +46,56 @@ contrôle.
 
 ## Scripts
 
-| Script                          | Rôle                                                        |
-| ------------------------------- | ----------------------------------------------------------- |
-| `npm run dev`                   | Serveur de développement Next.js                            |
-| `npm run build`                 | Build de production                                         |
-| `npm run start`                 | Serveur du build, à lancer explicitement                    |
-| `npm run lint`                  | Analyse ESLint du projet                                    |
-| `npm run typecheck`             | Vérification TypeScript sans émission                       |
-| `npm run test`                  | Tests Vitest en exécution unique                            |
-| `npm run test:scripts`          | Tests isolés des scripts de secrets et du wrapper Compose   |
-| `npm run test:integration`      | Environnement Compose auth isolé et parcours intégré        |
-| `npm run test:e2e`              | Parcours navigateur Playwright dans `promptube_admin_test`  |
-| `npm run test:auth:security`    | Contrôles sécurité auth dans l’environnement isolé          |
-| `npm run test:auth:all`         | Validation complète auth, E2E, readiness et nettoyage       |
-| `npm run test:watch`            | Tests Vitest en mode interactif                             |
-| `npm run test:coverage`         | Tests avec rapport V8 dans `coverage/`                      |
-| `npm run format`                | Formatage Prettier des fichiers suivis par la configuration |
-| `npm run format:check`          | Vérification du formatage sans modification                 |
-| `npm run check`                 | Format (contrôle seul), lint, types, tests, scripts, build  |
-| `npm run audit`                 | Audit npm complet, sans correction automatique              |
-| `npm run audit:prod`            | Audit npm limité aux dépendances de production              |
-| `npm run docker:secrets:init`   | Génération locale des secrets Docker ignorés                |
-| `npm run docker:config`         | Validation de la configuration Compose                      |
-| `npm run docker:build`          | Construction des images administratives                     |
-| `npm run docker:up`             | Démarrage avec attente des healthchecks                     |
-| `npm run docker:ps`             | État des services Compose                                   |
-| `npm run docker:logs`           | Dernières lignes de logs, sans suivi persistant             |
-| `npm run docker:health`         | Vérification des healthchecks de la stack active            |
-| `npm run docker:verify`         | Contrôles d’intégration, de ports et d’isolation            |
-| `npm run docker:up:storage`     | Démarrage explicite du stockage objet optionnel             |
-| `npm run docker:verify:storage` | Vérification lorsque le profil stockage est actif           |
-| `npm run docker:test:config`    | Validation Compose de l’environnement de test auth          |
-| `npm run docker:down`           | Arrêt sans suppression des volumes                          |
-| `npm run db:check`              | Revue statique des migrations SQL versionnées               |
-| `npm run db:provision`          | Provisioning idempotent des rôles PostgreSQL locaux         |
-| `npm run db:migrate`            | Application explicite des migrations Drizzle                |
-| `npm run db:status`             | Statut des migrations appliquées                            |
-| `npm run db:backup`             | Sauvegarde locale PostgreSQL ignorée par Git                |
-| `npm run db:restore:test`       | Restauration dans un conteneur PostgreSQL éphémère          |
-| `npm run admin:bootstrap`       | Création interactive locale du premier administrateur       |
+| Script                             | Rôle                                                        |
+| ---------------------------------- | ----------------------------------------------------------- |
+| `npm run dev`                      | Serveur de développement Next.js                            |
+| `npm run build`                    | Build de production                                         |
+| `npm run start`                    | Serveur du build, à lancer explicitement                    |
+| `npm run lint`                     | Analyse ESLint du projet                                    |
+| `npm run typecheck`                | Vérification TypeScript sans émission                       |
+| `npm run test`                     | Tests Vitest en exécution unique                            |
+| `npm run test:scripts`             | Tests isolés des scripts de secrets et du wrapper Compose   |
+| `npm run test:operations`          | Tests crypto, manifeste, rétention et protections ops       |
+| `npm run test:integration`         | Environnement Compose auth isolé et parcours intégré        |
+| `npm run test:e2e`                 | Parcours navigateur Playwright dans `promptube_admin_test`  |
+| `npm run test:auth:security`       | Contrôles sécurité auth dans l’environnement isolé          |
+| `npm run test:auth:all`            | Validation complète auth, E2E, readiness et nettoyage       |
+| `npm run test:watch`               | Tests Vitest en mode interactif                             |
+| `npm run test:coverage`            | Tests avec rapport V8 dans `coverage/`                      |
+| `npm run format`                   | Formatage Prettier des fichiers suivis par la configuration |
+| `npm run format:check`             | Vérification du formatage sans modification                 |
+| `npm run check`                    | Format (contrôle seul), lint, types, tests, scripts, build  |
+| `npm run audit`                    | Audit npm complet, sans correction automatique              |
+| `npm run audit:prod`               | Audit npm limité aux dépendances de production              |
+| `npm run docker:secrets:init`      | Génération locale des secrets Docker ignorés                |
+| `npm run docker:config`            | Validation de la configuration Compose                      |
+| `npm run docker:build`             | Construction des images administratives                     |
+| `npm run docker:up`                | Démarrage avec attente des healthchecks                     |
+| `npm run docker:ps`                | État des services Compose                                   |
+| `npm run docker:logs`              | Dernières lignes de logs, sans suivi persistant             |
+| `npm run docker:health`            | Vérification des healthchecks de la stack active            |
+| `npm run docker:verify`            | Contrôles d’intégration, de ports et d’isolation            |
+| `npm run docker:up:storage`        | Démarrage explicite du stockage objet optionnel             |
+| `npm run docker:verify:storage`    | Vérification lorsque le profil stockage est actif           |
+| `npm run docker:test:config`       | Validation Compose de l’environnement de test auth          |
+| `npm run docker:down`              | Arrêt sans suppression des volumes                          |
+| `npm run db:check`                 | Revue statique des migrations SQL versionnées               |
+| `npm run db:provision`             | Provisioning idempotent des rôles PostgreSQL locaux         |
+| `npm run db:migrate`               | Application explicite des migrations Drizzle                |
+| `npm run db:status`                | Statut des migrations appliquées                            |
+| `npm run db:backup`                | Alias de la sauvegarde PostgreSQL chiffrée                  |
+| `npm run db:restore:test`          | Alias de la restauration isolée chiffrée                    |
+| `npm run admin:bootstrap`          | Création interactive locale du premier administrateur       |
+| `npm run ops:status`               | État opérationnel non sensible                              |
+| `npm run backup:create`            | Sauvegarde PostgreSQL chiffrée et manifestée                |
+| `npm run backup:list`              | Liste non sensible des sauvegardes                          |
+| `npm run backup:verify`            | Vérification SHA-256, MAC, AES-GCM et `pg_restore -l`       |
+| `npm run backup:restore:test`      | Restauration dans `promptube_admin_restore_test`            |
+| `npm run backup:retention:dry-run` | Simulation de rétention locale                              |
+| `npm run backup:retention:apply`   | Application avec confirmation explicite                     |
+| `npm run secrets:rotation:check`   | Inventaire non sensible des secrets                         |
+| `npm run secrets:rotation:test`    | Rotation isolée PostgreSQL/Redis/clé backup                 |
+| `npm run disaster-recovery:test`   | Reprise après incident sur données factices                 |
 
 `npm run format` est le seul de ces scripts qualité autorisé à réécrire des fichiers.
 `npm run check`, `npm run audit` et `npm run audit:prod` sont strictement non modificatifs. Les
@@ -188,6 +199,7 @@ npm run docker:config
 npm run docker:build
 npm run docker:up
 npm run docker:verify
+npm run ops:status
 ```
 
 La génération de secrets utilise des fichiers temporaires créés dans `secrets/`, un `umask 077`,
@@ -247,12 +259,16 @@ renvoie `503` avec un état générique, sans hôte, port, utilisateur, URL ou s
 ## Authentification locale
 
 L’inscription publique est désactivée. Le premier administrateur se crée uniquement depuis un
-service Docker one-shot local :
+service Docker one-shot local, après une sauvegarde pré-admin chiffrée et restaurée :
 
 ```bash
+npm run docker:secrets:init
 npm run docker:up
 npm run db:provision
 npm run db:migrate
+npm run backup:create
+npm run backup:verify
+npm run backup:restore:test
 npm run admin:bootstrap
 ```
 
@@ -325,6 +341,8 @@ Cette phase n’ajoute volontairement aucun :
 - connexion applicative à la production.
 
 Consulter `docs/architecture.md` pour les décisions internes, `docs/authentication.md` pour
-l’identité locale, `docs/database.md` pour PostgreSQL/Drizzle et `CHANGELOG.local.md` pour
-l’historique local. Les opérations Docker sont décrites dans `docs/docker-local.md`. Le suivi des
-avis de dépendances non résolus se trouve dans `docs/security-debt.md`.
+l’identité locale, `docs/database.md` pour PostgreSQL/Drizzle, `docs/backups.md` pour les backups,
+`docs/disaster-recovery.md` pour la reprise, `docs/secret-rotation.md` pour les rotations et
+`CHANGELOG.local.md` pour l’historique local. Les opérations Docker sont décrites dans
+`docs/docker-local.md`. Le suivi des avis de dépendances non résolus se trouve dans
+`docs/security-debt.md`.

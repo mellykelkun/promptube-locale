@@ -78,6 +78,8 @@ services:
     image: postgres:18.4-alpine3.23@sha256:996d0920e4ff9df1fc19dacb904492f3c1ec0ec1cc338f0ad7123be7731c5f5e
     environment:
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_BACKUP_PASSWORD_FILE: /run/secrets/admin-promptube-postgres-backup-password
+      POSTGRES_BACKUP_USER: ${POSTGRES_BACKUP_USER:?POSTGRES_BACKUP_USER is required}
       POSTGRES_PASSWORD_FILE: /run/secrets/admin-promptube-postgres-password
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
     expose:
@@ -88,6 +90,7 @@ services:
       - postgres-data:/var/lib/postgresql
     secrets:
       - admin-promptube-postgres-password
+      - admin-promptube-postgres-backup-password
     restart: unless-stopped
     read_only: true
     shm_size: 128mb
@@ -199,6 +202,8 @@ services:
     environment:
       POSTGRES_APP_PASSWORD_FILE: /run/secrets/admin-promptube-postgres-app-password
       POSTGRES_APP_USER: ${POSTGRES_APP_USER:?POSTGRES_APP_USER is required}
+      POSTGRES_BACKUP_PASSWORD_FILE: /run/secrets/admin-promptube-postgres-backup-password
+      POSTGRES_BACKUP_USER: ${POSTGRES_BACKUP_USER:?POSTGRES_BACKUP_USER is required}
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
       POSTGRES_HOST: admin-promptube-postgres
       POSTGRES_MIGRATION_PASSWORD_FILE: /run/secrets/admin-promptube-postgres-migration-password
@@ -212,6 +217,7 @@ services:
       - admin-promptube-postgres-password
       - admin-promptube-postgres-app-password
       - admin-promptube-postgres-migration-password
+      - admin-promptube-postgres-backup-password
     depends_on:
       admin-promptube-postgres:
         condition: service_healthy
@@ -228,6 +234,7 @@ services:
       - tools
     environment:
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_BACKUP_USER: ${POSTGRES_BACKUP_USER:?POSTGRES_BACKUP_USER is required}
       POSTGRES_HOST: admin-promptube-postgres
       POSTGRES_MIGRATION_PASSWORD_FILE: /run/secrets/admin-promptube-postgres-migration-password
       POSTGRES_MIGRATION_USER: ${POSTGRES_MIGRATION_USER:?POSTGRES_MIGRATION_USER is required}
@@ -285,9 +292,13 @@ secrets:
     file: ./secrets/postgres-app-password
   admin-promptube-postgres-migration-password:
     file: ./secrets/postgres-migration-password
+  admin-promptube-postgres-backup-password:
+    file: ./secrets/postgres-backup-password
   admin-promptube-redis-password:
     file: ./secrets/redis-password
   admin-promptube-better-auth-secret:
     file: ./secrets/better-auth-secret
+  admin-promptube-backup-encryption-key:
+    file: ./secrets/backup-encryption-key
   admin-promptube-object-storage-password:
     file: ./secrets/object-storage-password

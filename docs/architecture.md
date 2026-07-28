@@ -4,9 +4,10 @@
 
 Cette architecture couvre le socle local Next.js, ses services d’infrastructure isolés, PostgreSQL,
 Redis, les migrations Drizzle, l’authentification administrateur locale, le TOTP obligatoire, les
-sessions révocables et l’audit persistant. Elle n’autorise aucune connexion à la production, donnée
-métier, système de paiement ou fonctionnalité commerciale. Le stockage objet reste hors profil par
-défaut et n’est pas utilisé par le code applicatif.
+sessions révocables, l’audit persistant et les opérations locales de sauvegarde/restauration. Elle
+n’autorise aucune connexion à la production, donnée métier, système de paiement ou fonctionnalité
+commerciale. Le stockage objet reste hors profil par défaut et n’est pas utilisé par le code
+applicatif.
 
 ## Frontières internes
 
@@ -70,6 +71,11 @@ invalide, jamais sa valeur.
 Les variables non sensibles de PostgreSQL, Redis, Better Auth et des origines locales sont validées
 par Zod. Les mots de passe et secrets sont toujours lus par chemin de fichier secret ; aucune URL
 contenant un mot de passe n’est construite ou journalisée.
+
+PostgreSQL est la source de vérité locale des administrateurs, sessions, états TOTP, codes de
+secours gérés par Better Auth, audit et migrations. Redis reste jetable et limité aux compteurs
+temporaires. Les sauvegardes PostgreSQL chiffrées sont stockées sous `.local/` par défaut avec
+manifeste non sensible ; ce dossier est ignoré par Git et Docker.
 
 Dans Docker, `NODE_ENV=production` active le runtime Next.js optimisé et `APP_ENV=local` décrit le
 déploiement local. Ces deux notions sont volontairement distinctes et testées. Hors Docker,

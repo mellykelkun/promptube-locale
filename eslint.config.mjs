@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "coverage/**",
+    ".local/**",
+    ".tmp-operations-test/**",
     "next-env.d.ts",
   ]),
 ]);

@@ -47,6 +47,8 @@ yarn-error.log*
 /.tmp-auth-test.*/
 /.tmp-trivy-scan.*/
 /.tmp-trivy-cache.*/
+/.tmp-operations-test/
+/.local/
 
 # env files (can opt-in for committing if needed)
 .env*

@@ -21,3 +21,6 @@ test-results
 .tmp-auth-test.*
 .tmp-trivy-scan.*
 .tmp-trivy-cache.*
+.tmp-operations-test
+.local
+backups

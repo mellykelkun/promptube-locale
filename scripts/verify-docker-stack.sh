@@ -338,6 +338,7 @@ done
 
 secret_mappings="
 $postgres_id:admin-promptube-postgres-password
+$postgres_id:admin-promptube-postgres-backup-password
 $redis_id:admin-promptube-redis-password
 $app_id:admin-promptube-postgres-app-password
 $app_id:admin-promptube-redis-password
@@ -372,8 +373,10 @@ for secret_name in \
   postgres-password \
   postgres-app-password \
   postgres-migration-password \
+  postgres-backup-password \
   redis-password \
   better-auth-secret \
+  backup-encryption-key \
   object-storage-password
 do
   secret_pattern_file="$secrets_dir/$secret_name"
@@ -401,8 +404,10 @@ for expected_image in $expected_images; do
       -f "$secrets_dir/postgres-password" \
       -f "$secrets_dir/postgres-app-password" \
       -f "$secrets_dir/postgres-migration-password" \
+      -f "$secrets_dir/postgres-backup-password" \
       -f "$secrets_dir/redis-password" \
       -f "$secrets_dir/better-auth-secret" \
+      -f "$secrets_dir/backup-encryption-key" \
       -f "$secrets_dir/object-storage-password"; then
     fail "A secret value was detected in a project runtime image."
   fi

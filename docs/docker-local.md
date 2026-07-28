@@ -113,10 +113,16 @@ La commande crée, sans afficher leur contenu :
 - `secrets/object-storage-password` ;
 - `secrets/postgres-app-password` ;
 - `secrets/postgres-migration-password` ;
+- `secrets/postgres-backup-password` ;
 - `secrets/better-auth-secret`.
+- `secrets/backup-encryption-key`.
 
 Chaque fichier réel est ignoré par Git et protégé en mode `600`. Les fichiers `*.example` ne
 contiennent que des marqueurs factices et ne sont jamais utilisés par Compose.
+
+`postgres-backup-password` alimente un rôle PostgreSQL lecture seule réservé à `pg_dump`.
+`backup-encryption-key` n’est montée dans aucun conteneur runtime ; elle chiffre les backups locaux
+et doit rester séparée des archives chiffrées.
 
 La génération est atomique : `umask 077`, temporaire créé dans le même dossier, 32 octets OpenSSL
 encodés en hexadécimal, validation, mode `600`, puis renommage. Un fichier existant n’est jamais
@@ -276,9 +282,11 @@ Il n’y a pas de HTTPS local dans cette phase.
 
 ## Persistance et sauvegardes
 
-`docker:down` conserve les trois volumes. `npm run db:backup` produit un dump PostgreSQL local
-ignoré par Git sous `backups/`, avec permissions `600` et SHA-256 associé. `npm run db:restore:test`
-restaure ce dump dans un conteneur PostgreSQL éphémère, sans port hôte ni volume persistant.
+`docker:down` conserve les trois volumes. `npm run db:backup` délègue à `backup:create` et produit
+une archive PostgreSQL chiffrée sous `.local/backups/postgres/`, accompagnée d’un manifeste sous
+`.local/backup-manifests/`. `npm run db:restore:test` restaure cette archive dans un conteneur
+PostgreSQL éphémère avec `pg_restore --no-owner --no-privileges`, sans port hôte ni volume
+persistant.
 
 Une future procédure de sauvegarde devra :
 

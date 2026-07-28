@@ -2,6 +2,23 @@
 
 ## 2026-07-28
 
+### Fondation d’exploitation locale post-authentification
+
+- Ajout d’un workflow de sauvegarde PostgreSQL chiffrée AES-256-GCM sans dump persistant en clair,
+  avec manifeste JSON, SHA-256 et MAC HMAC.
+- Ajout du rôle PostgreSQL `POSTGRES_BACKUP_USER` en lecture seule et des secrets
+  `postgres-backup-password` et `backup-encryption-key`.
+- Ajout des environnements isolés `promptube_admin_restore_test` et `promptube_admin_rotation_test`,
+  sans port hôte ni volume persistant.
+- Ajout des commandes `ops:status`, `backup:*`, `secrets:rotation:*`, `disaster-recovery:test` et
+  `test:operations`.
+- Correction de l’idempotence `db:migrate` sur un baseline déjà matérialisé, des droits de lecture
+  backup sur les séquences et de la restauration isolée avec `pg_restore --no-owner`.
+- Validation de la rotation Redis par recréation ciblée du conteneur avec volume conservé, et non
+  par simple redémarrage.
+- Documentation des sources de vérité, de la rétention locale, de la rotation des secrets et de la
+  reprise après incident avant création du premier administrateur réel.
+
 ### Fondation identité et accès locale
 
 - Ajout de l’environnement d’intégration isolé `promptube_admin_test` sans volume nommé, sans port
