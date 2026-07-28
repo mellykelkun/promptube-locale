@@ -12,6 +12,11 @@ sortie non nul sans correction stable compatible. Cette séparation ne vaut ni c
 acceptation définitive du risque. Aucun `audit fix`, override transitif, paquet canary ou
 rétrogradation n’est autorisé pour les contourner.
 
+`@playwright/test` est utilisé uniquement comme dépendance de développement pour l’environnement
+isolé `promptube_admin_test`. Playwright et Chromium ne sont pas copiés dans l’image runtime Next.js
+; toute vulnérabilité éventuelle de cet outillage doit être évaluée comme dette de test, pas comme
+surface applicative exposée.
+
 ## Stockage objet local
 
 ### MinIO — GHSA-jjjj-jwhf-8rgr / CVE-2025-62506

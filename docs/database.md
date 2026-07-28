@@ -34,6 +34,11 @@ revues et appliquées explicitement par service one-shot. Le conteneur de migrat
 versionnés avec le compte de migration et ne contient pas les dépendances de développement. Next.js
 ne migre jamais la base au démarrage normal.
 
+`npm run test:auth:all` applique les mêmes migrations sur une base PostgreSQL vide dans
+`promptube_admin_test`. Ce projet de test utilise des données en `tmpfs`, des rôles et mots de passe
+temporaires, et ne partage aucun volume avec la base persistante locale. Le test vérifie aussi que
+le compte runtime ne peut pas créer de table, schéma ou rôle, ni supprimer une table.
+
 ## Schéma initial
 
 La migration initiale crée :

@@ -150,3 +150,14 @@ code importable par l’application cliente.
 
 La couverture V8 est générée dans `coverage/` et n’est jamais versionnée. Les seuils minimaux sont
 80 % pour les statements, lignes et fonctions, et 65 % pour les branches.
+
+Les tests d’intégration d’authentification utilisent un projet Compose séparé,
+`promptube_admin_test`, défini dans `compose.test.yaml`. Il ne partage ni réseau, ni volume, ni
+secret avec `promptube_admin`, `promptube-prod` ou les ressources `infrastructure_*`. PostgreSQL et
+Redis y utilisent `tmpfs`; MinIO est absent. Le runner Playwright est l’image officielle
+`mcr.microsoft.com/playwright:v1.62.0-noble` verrouillée par digest et accède au proxy uniquement
+par DNS interne Compose, sans port hôte.
+
+`APP_ENV=test` active uniquement des durées courtes pour les tests de rate limiting et l’exception
+HTTP nécessaire aux cookies non `Secure` dans le réseau Compose de test. `APP_ENV=local` conserve
+les limites locales normales et `NODE_ENV=production` reste réservé au runtime Next.js optimisé.

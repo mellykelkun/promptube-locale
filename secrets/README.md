@@ -34,3 +34,8 @@ garantie pour un secret issu d’un fichier hôte.
 Sauvegarder ces fichiers séparément des volumes, dans un support chiffré et à accès restreint. Une
 restauration doit préserver les noms exacts et le mode `600`, puis être validée avec
 `npm run docker:config` sans jamais imprimer le contenu.
+
+Les tests `npm run test:auth:all` n’utilisent pas ces secrets réels. Ils créent un dossier
+temporaire `.tmp-auth-test.*` dans le dépôt, y génèrent des secrets éphémères en mode `600`, les
+montent uniquement dans le projet Compose `promptube_admin_test`, puis suppriment ce dossier avec un
+`trap`. Ces secrets de test ne doivent jamais être copiés, journalisés ou versionnés.

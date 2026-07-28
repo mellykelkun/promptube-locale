@@ -17,7 +17,9 @@ client, fournisseur OAuth, magic link, reset email ou accès production.
 - Redis utilisé pour la limitation de tentatives.
 
 En local HTTP, les cookies ne peuvent pas exiger `Secure`. Cette exception dépend de
-`APP_ENV=local`. Tout autre environnement doit utiliser HTTPS et cookies `Secure`.
+`APP_ENV=local`. L’environnement automatisé `APP_ENV=test` bénéficie de la même exception parce que
+le navigateur Playwright accède au proxy de test en HTTP interne Compose. Tout autre environnement
+doit utiliser HTTPS et cookies `Secure`.
 
 ## Mots de passe
 
@@ -69,3 +71,21 @@ protection réelle est répétée côté serveur dans la DAL :
 
 Routes publiques : `/login`, `/api/auth/*`, `/api/health`, `/api/health/live`, `/api/health/ready`
 et ressources statiques. Routes protégées : dashboard, audit et futures sections admin.
+
+`/verify-2fa` est un état intermédiaire : le middleware ne l’autorise que si Better Auth a émis le
+cookie de challenge 2FA ou si une session existe déjà. Une tentative d’accès au dashboard pendant ce
+challenge est redirigée vers `/verify-2fa`, mais la session complète n’est accordée qu’après
+validation du second facteur par le handler serveur.
+
+## Validation E2E
+
+`npm run test:auth:all` valide l’authentification dans `promptube_admin_test`, un projet Compose
+séparé de la stack persistante. Les données PostgreSQL et Redis vivent en `tmpfs`, les secrets sont
+générés à chaque exécution en mode `600`, l’administrateur de test utilise `example.invalid`, et
+aucun compte personnel n’est créé.
+
+Le parcours navigateur Playwright vérifie l’accès anonyme, le refus d’inscription publique,
+l’anti-énumération, la première connexion, l’activation TOTP, le challenge TOTP à chaque nouvelle
+connexion, l’usage unique d’un code de secours, le logout, la révocation, les expirations, le rate
+limiting Redis, les cookies, les origines de confiance et l’audit persistant. Les traces, vidéos,
+captures et `storageState` Playwright sont désactivés afin de ne pas conserver de secret.

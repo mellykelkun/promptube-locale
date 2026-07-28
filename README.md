@@ -55,6 +55,10 @@ contrôle.
 | `npm run typecheck`             | Vérification TypeScript sans émission                       |
 | `npm run test`                  | Tests Vitest en exécution unique                            |
 | `npm run test:scripts`          | Tests isolés des scripts de secrets et du wrapper Compose   |
+| `npm run test:integration`      | Environnement Compose auth isolé et parcours intégré        |
+| `npm run test:e2e`              | Parcours navigateur Playwright dans `promptube_admin_test`  |
+| `npm run test:auth:security`    | Contrôles sécurité auth dans l’environnement isolé          |
+| `npm run test:auth:all`         | Validation complète auth, E2E, readiness et nettoyage       |
 | `npm run test:watch`            | Tests Vitest en mode interactif                             |
 | `npm run test:coverage`         | Tests avec rapport V8 dans `coverage/`                      |
 | `npm run format`                | Formatage Prettier des fichiers suivis par la configuration |
@@ -72,6 +76,7 @@ contrôle.
 | `npm run docker:verify`         | Contrôles d’intégration, de ports et d’isolation            |
 | `npm run docker:up:storage`     | Démarrage explicite du stockage objet optionnel             |
 | `npm run docker:verify:storage` | Vérification lorsque le profil stockage est actif           |
+| `npm run docker:test:config`    | Validation Compose de l’environnement de test auth          |
 | `npm run docker:down`           | Arrêt sans suppression des volumes                          |
 | `npm run db:check`              | Revue statique des migrations SQL versionnées               |
 | `npm run db:provision`          | Provisioning idempotent des rôles PostgreSQL locaux         |
@@ -218,6 +223,23 @@ La valeur Docker est `local`; un serveur lancé par `npm run dev` retourne `deve
 Les paramètres de requête inattendus et les identifiants de corrélation invalides sont rejetés par
 une réponse `400` sûre. Le endpoint ne retourne ni chemin, ni variable brute, ni stack trace, ni
 version de dépendance.
+
+## Validation d’authentification isolée
+
+`npm run test:auth:all` crée un environnement Compose séparé nommé `promptube_admin_test`. Il
+utilise PostgreSQL et Redis en `tmpfs`, des secrets générés dans un dossier temporaire ignoré, une
+image Playwright officielle `mcr.microsoft.com/playwright:v1.62.0-noble` verrouillée par le digest
+OCI `sha256:baed2032d533817f3dbe6425de795788430ba345e819a1201337009ba17c9d07`, et aucun port hôte.
+
+Le test provisionne une base vide, applique les migrations versionnées, crée un administrateur
+temporaire par le même code que `admin:bootstrap`, vérifie login, TOTP, code de secours, logout,
+révocation, expirations, rate limiting Redis, audit, cookies, refus CSRF/origine et pannes
+PostgreSQL/Redis. Les rapports, traces, vidéos et captures Playwright sont désactivés. Playwright et
+Chromium ne sont jamais copiés dans l’image runtime Next.js.
+
+Le nettoyage final arrête et supprime uniquement les conteneurs et réseaux `promptube_admin_test`.
+Il ne crée aucun volume nommé de test, ne partage pas les volumes `promptube_admin_*`, ne monte
+aucun secret réel et ne touche pas à `promptube-prod`.
 
 `GET /api/health/ready` vérifie PostgreSQL et Redis avec des timeouts courts. En cas de panne, il
 renvoie `503` avec un état générique, sans hôte, port, utilisateur, URL ou stack trace.

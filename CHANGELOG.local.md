@@ -4,6 +4,15 @@
 
 ### Fondation identité et accès locale
 
+- Ajout de l’environnement d’intégration isolé `promptube_admin_test` sans volume nommé, sans port
+  hôte, sans secret réel et sans MinIO.
+- Ajout du parcours navigateur Playwright complet pour l’admin temporaire : login, TOTP, challenge
+  2FA, code de secours à usage unique, logout, révocation, expiration, rate limiting, audit et
+  readiness PostgreSQL/Redis.
+- Correction de la révocation explicite de session au logout et de la redirection intermédiaire
+  `/verify-2fa` pendant le challenge second facteur.
+- Séparation du préfixe Redis de test `promptube:test:` et durées de test courtes limitées à
+  `APP_ENV=test`.
 - Ajout de Drizzle ORM, du schéma PostgreSQL versionné et d’une migration SQL initiale générée.
 - Création de rôles PostgreSQL séparés : bootstrap, migration et runtime applicatif.
 - Ajout du provisioning idempotent, de l’application explicite des migrations, du statut, du backup

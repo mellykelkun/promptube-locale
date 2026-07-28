@@ -140,6 +140,7 @@ Validation et construction :
 ```bash
 npm run docker:config
 npm run docker:build
+npm run docker:test:config
 ```
 
 Démarrage avec attente des healthchecks :
@@ -180,6 +181,25 @@ npm run admin:bootstrap
 
 `db:migrate` est explicite et n’est jamais lancé par le démarrage normal de Next.js.
 `admin:bootstrap` est interactif, local, et refuse de créer un second premier administrateur.
+
+Validation isolée de l’identité admin :
+
+```bash
+npm run test:auth:all
+```
+
+Cette commande utilise le projet Compose distinct `promptube_admin_test`. Elle génère des secrets de
+test temporaires, démarre PostgreSQL et Redis en `tmpfs`, provisionne les rôles, applique les
+migrations, crée un administrateur temporaire par le code de bootstrap réel, exécute Playwright dans
+l’image officielle `mcr.microsoft.com/playwright:v1.62.0-noble` verrouillée par le digest OCI
+`sha256:baed2032d533817f3dbe6425de795788430ba345e819a1201337009ba17c9d07`, teste le parcours
+authentification/TOTP/audit, vérifie les pannes readiness PostgreSQL et Redis, puis supprime
+uniquement les conteneurs et réseaux `promptube_admin_test`.
+
+L’environnement de test ne publie aucun port hôte, ne crée aucun volume nommé, ne monte aucun secret
+réel, ne démarre pas MinIO, ne partage aucun réseau ou volume `promptube_admin_*` et ne touche pas à
+`promptube-prod`. Le runner Playwright fonctionne dans le réseau Compose de test. Il n’est pas
+présent dans l’image runtime Next.js.
 
 Inspection non persistante :
 
