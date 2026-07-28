@@ -3,9 +3,9 @@
 ## Sources de vérité
 
 PostgreSQL est la source de vérité locale pour les administrateurs, comptes Better Auth, sessions
-persistantes, configuration TOTP, codes de secours gérés par Better Auth, journal d’audit et
-migrations. Redis contient seulement des compteurs temporaires avec TTL et peut être reconstruit.
-MinIO reste hors profil par défaut et n’est pas sauvegardé dans cette phase.
+persistantes, configuration TOTP, codes de secours gérés par Better Auth, journal d’audit,
+migrations et catalogue local. Redis contient seulement des compteurs temporaires avec TTL et peut
+être reconstruit. MinIO reste hors profil par défaut et n’est pas sauvegardé dans cette phase.
 
 ## Destination
 
@@ -53,6 +53,23 @@ npm run backup:restore:test
 
 `backup:restore:test` restaure dans `promptube_admin_restore_test`, un projet Compose isolé en
 `tmpfs`, sans port hôte, sans volume persistant et sans partage avec `promptube_admin`.
+
+Avant une migration catalogue persistante, créer et restaurer un backup pré-migration. Après
+application de la migration, créer et restaurer un backup post-migration. Aucun de ces backups ne
+doit contenir de dump clair ou de clé.
+
+Depuis la migration catalogue, `backup:restore:test` vérifie aussi les quatre tables catalogue
+attendues lorsqu’une sauvegarde restaurée contient au moins deux migrations appliquées.
+
+Points de restauration créés pour la phase catalogue du 28 juillet 2026 :
+
+| Usage                 | Backup ID                                    | SHA-256                                                            |
+| --------------------- | -------------------------------------------- | ------------------------------------------------------------------ |
+| Pré-catalogue         | `postgres-2026-07-28T19-46-27-333Z-aecadb76` | `ae0eddeca9e6e431bfa235cd33670bafcdf8ff4e5be3927aa8dd8e75c1c7911d` |
+| Post-migration modèle | `postgres-2026-07-28T19-48-42-239Z-6ac47375` | `acace5c0e9b5928bc03ade856892e170158738102a6c391e111d0e941123d489` |
+
+Le second point contient le schéma catalogue mais aucune donnée catalogue réelle créée
+automatiquement.
 
 ## Rétention
 

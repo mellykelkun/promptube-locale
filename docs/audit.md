@@ -27,6 +27,22 @@ d’exploitation sensibles. Il est en lecture seule dans l’interface admin act
 - `SECRET_ROTATION_SUCCEEDED` ;
 - `SECRET_ROTATION_FAILED`.
 
+Événements catalogue :
+
+- `CATALOG_CATEGORY_CREATED`, `CATALOG_CATEGORY_UPDATED`, `CATALOG_CATEGORY_ARCHIVED`,
+  `CATALOG_CATEGORY_RESTORED` ;
+- `CATALOG_SUBCATEGORY_CREATED`, `CATALOG_SUBCATEGORY_UPDATED`, `CATALOG_SUBCATEGORY_ARCHIVED`,
+  `CATALOG_SUBCATEGORY_RESTORED` ;
+- `CATALOG_MODULE_CREATED`, `CATALOG_MODULE_UPDATED`, `CATALOG_MODULE_ARCHIVED`,
+  `CATALOG_MODULE_RESTORED` ;
+- `CATALOG_VERSION_CREATED`, `CATALOG_VERSION_UPDATED`, `CATALOG_VERSION_SUBMITTED`,
+  `CATALOG_VERSION_RETURNED_TO_DRAFT`, `CATALOG_VERSION_APPROVED`, `CATALOG_VERSION_SUPERSEDED` ;
+- `CATALOG_CONFLICT_DETECTED` ;
+- `CATALOG_AUTHORIZATION_DENIED`.
+
+Les conflits de révision sont audités après rollback de la transaction échouée afin que l’événement
+persiste sans laisser passer la mutation concurrente.
+
 Interdits dans l’audit :
 
 - mot de passe ;
@@ -38,4 +54,6 @@ Interdits dans l’audit :
 - secret TOTP ou URI TOTP ;
 - code TOTP ;
 - code de secours ;
+- contenu Markdown complet ;
+- description catalogue complète ;
 - clé ou contenu de backup.

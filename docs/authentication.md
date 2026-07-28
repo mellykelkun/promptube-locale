@@ -89,3 +89,13 @@ l’anti-énumération, la première connexion, l’activation TOTP, le challeng
 connexion, l’usage unique d’un code de secours, le logout, la révocation, les expirations, le rate
 limiting Redis, les cookies, les origines de confiance et l’audit persistant. Les traces, vidéos,
 captures et `storageState` Playwright sont désactivés afin de ne pas conserver de secret.
+
+Après une restauration réelle de PostgreSQL, les sessions Better Auth restaurées peuvent rester
+valides. Avant réouverture de l’administration, lancer explicitement :
+
+```bash
+npm run admin:sessions:revoke-all
+```
+
+La commande est locale, idempotente, ne crée aucun utilisateur, ne modifie aucun mot de passe et ne
+touche pas aux secrets TOTP. Elle écrit un événement d’audit global.

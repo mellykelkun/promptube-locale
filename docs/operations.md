@@ -34,6 +34,27 @@ npm run docker:down
 
 Ensuite seulement, le propriétaire peut lancer `npm run admin:bootstrap`.
 
+## Séquence migration catalogue
+
+Avant d’appliquer une migration métier locale :
+
+```bash
+npm run docker:up
+npm run db:status
+npm run backup:create
+npm run backup:verify
+npm run backup:restore:test
+npm run db:migrate
+npm run db:status
+npm run backup:create
+npm run backup:verify
+npm run backup:restore:test
+npm run docker:down
+```
+
+La migration catalogue ne crée aucune donnée catalogue réelle automatiquement. La vérification UI
+avec le compte personnel reste manuelle.
+
 ## Audit opérationnel
 
 Les opérations persistantes sensibles écrivent des événements minimaux dans `admin_audit_events` :

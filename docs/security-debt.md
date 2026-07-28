@@ -22,6 +22,10 @@ Les workflows de sauvegarde/restauration utilisent uniquement `node:crypto`, `pg
 de dépendance runtime ou npm de chiffrement. Toute vulnérabilité critique exploitable dans ces
 outils bloque une restauration réelle jusqu’à réévaluation.
 
+La fondation catalogue n’ajoute aucune dépendance npm runtime, aucun moteur Markdown, aucun upload,
+aucun traitement d’image et aucune utilisation applicative de MinIO. Le Markdown reste stocké comme
+texte et n’est pas rendu en HTML dans cette phase.
+
 ## Stockage objet local
 
 ### MinIO — GHSA-jjjj-jwhf-8rgr / CVE-2025-62506
@@ -54,6 +58,10 @@ Le 28 juillet 2026, les cinq images runtime ont été analysées avec l’image 
 exportée dans une archive temporaire ; le scanner n’a reçu ni socket Docker, ni secret, ni accès au
 dépôt. La base de vulnérabilités v2 datait du 27 juillet 2026 à 19:20:18 UTC. Archives, rapports et
 cache temporaires ont été supprimés après synthèse.
+
+Après ajout du catalogue, les images modifiées `admin-promptube-app:0.1.0`,
+`admin-promptube-tools:0.1.0` et `admin-promptube-reverse-proxy:1.31.3` ont été rescannées avec le
+même scanner officiel épinglé, toujours par archive locale et sans socket Docker.
 
 | Image               | Critical | High | Décision locale                                               |
 | ------------------- | -------- | ---- | ------------------------------------------------------------- |

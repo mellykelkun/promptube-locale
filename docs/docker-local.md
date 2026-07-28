@@ -4,8 +4,8 @@
 
 Cette stack sert exclusivement au développement et à la validation locale de l’administration
 Promptube. Elle contient l’infrastructure PostgreSQL/Redis, les services one-shot de provisioning,
-migration et bootstrap, ainsi que l’authentification locale. Elle ne contient aucune donnée métier
-et ne se connecte jamais à `promptube-prod`.
+migration et bootstrap, l’authentification locale et le catalogue local. Elle ne contient aucune
+publication production, aucun upload métier et ne se connecte jamais à `promptube-prod`.
 
 Le nom Compose est fixé à `promptube_admin`. Les noms de services sont préfixés `admin-promptube-*`,
 sans `container_name`, afin que Compose conserve l’isolation et la gestion de leur cycle de vie.
@@ -164,6 +164,9 @@ npm run docker:up:storage
 npm run docker:verify:storage
 ```
 
+Le catalogue local n’utilise pas MinIO. Les migrations et tests catalogue démarrent uniquement
+PostgreSQL, Redis, l’application, le proxy et les services outils nécessaires.
+
 Test minimal sans services de données :
 
 ```bash
@@ -187,6 +190,8 @@ npm run admin:bootstrap
 
 `db:migrate` est explicite et n’est jamais lancé par le démarrage normal de Next.js.
 `admin:bootstrap` est interactif, local, et refuse de créer un second premier administrateur.
+L’image `admin-promptube-tools:0.1.0` exécute ces commandes one-shot sous l’utilisateur non-root
+`node`.
 
 Validation isolée de l’identité admin :
 
@@ -206,6 +211,17 @@ L’environnement de test ne publie aucun port hôte, ne crée aucun volume nomm
 réel, ne démarre pas MinIO, ne partage aucun réseau ou volume `promptube_admin_*` et ne touche pas à
 `promptube-prod`. Le runner Playwright fonctionne dans le réseau Compose de test. Il n’est pas
 présent dans l’image runtime Next.js.
+
+Validation isolée du catalogue :
+
+```bash
+npm run test:catalog:all
+```
+
+Cette commande réutilise `promptube_admin_test`, applique toutes les migrations, crée un
+administrateur temporaire, active son TOTP, vérifie les droits PostgreSQL, le workflow catalogue,
+l’audit, les conflits de révision, la recherche, les filtres, la pagination et le nettoyage. MinIO
+reste absent.
 
 Inspection non persistante :
 

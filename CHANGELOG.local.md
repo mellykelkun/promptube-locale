@@ -2,6 +2,28 @@
 
 ## 2026-07-28
 
+### Catalogue local admin
+
+- Ajout du modèle PostgreSQL versionné pour catégories, sous-catégories, modules et versions de
+  modules.
+- Ajout du workflow local `DRAFT → IN_REVIEW → APPROVED → SUPERSEDED`, avec retour
+  `IN_REVIEW → DRAFT`, immutabilité des versions approuvées/remplacées et supersession
+  transactionnelle.
+- Ajout de la couche domaine catalogue : validations Zod, normalisation des slugs, politiques de
+  capacités, services transactionnels, verrouillage optimiste par révision et audit de conflit après
+  rollback.
+- Ajout de l’interface protégée `/catalog`, `/catalog/categories`, `/catalog/subcategories` et
+  `/catalog/modules`, sans publication production, upload, ZIP ou MinIO métier.
+- Ajout des événements d’audit `CATALOG_*` et de la commande locale `admin:sessions:revoke-all` pour
+  la procédure post-restauration.
+- Ajout de `test:catalog:*` sur l’environnement isolé `promptube_admin_test`, sans volumes réels ni
+  secrets réels.
+- Création, vérification et restauration isolée des backups chiffrés pré-catalogue
+  `postgres-2026-07-28T19-46-27-333Z-aecadb76` et post-migration
+  `postgres-2026-07-28T19-48-42-239Z-6ac47375`.
+- Durcissement de l’image `admin-promptube-tools:0.1.0` pour exécuter les services one-shot sous
+  l’utilisateur non-root `node`.
+
 ### Correctif bootstrap administrateur local
 
 - Correction de la saisie interactive du mot de passe de `npm run admin:bootstrap` afin d’éviter
