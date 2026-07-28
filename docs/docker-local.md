@@ -11,30 +11,36 @@ sans `container_name`, afin que Compose conserve l’isolation et la gestion de 
 
 ## Versions verrouillées
 
-| Composant      | Référence                                          |
-| -------------- | -------------------------------------------------- |
-| Application    | `admin-promptube-app:0.1.0`                        |
-| Node.js        | `node:24.18.0-alpine3.23`                          |
-| Reverse proxy  | `admin-promptube-reverse-proxy:1.29.4`             |
-| Nginx de base  | `nginxinc/nginx-unprivileged:1.29.4-alpine`        |
-| PostgreSQL     | `postgres:18.4-alpine3.23`                         |
-| Redis          | `redis:8.6.5-alpine3.23`                           |
-| Stockage objet | `admin-promptube-object-storage:2025-09-07`        |
-| MinIO de base  | `quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z` |
+| Composant      | Référence                                                     |
+| -------------- | ------------------------------------------------------------- |
+| Application    | `admin-promptube-app:0.1.0`                                   |
+| Node.js        | `node:24.18.0-alpine3.23`                                     |
+| Reverse proxy  | `admin-promptube-reverse-proxy:1.31.3`                        |
+| Nginx de base  | `nginxinc/nginx-unprivileged:1.31.3-alpine3.24`               |
+| PostgreSQL     | `postgres:18.4-alpine3.23`                                    |
+| Redis          | `redis:8.6.5-alpine3.23`                                      |
+| Stockage objet | `admin-promptube-object-storage:RELEASE.2025-10-15T17-29-55Z` |
+| Source MinIO   | tag `RELEASE.2025-10-15T17-29-55Z`                            |
+| Commit MinIO   | `9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a`                    |
 
 Les images de base sont également verrouillées par digest dans les Dockerfiles et `compose.yaml`.
 Les digests doivent être revérifiés explicitement lors d’une mise à jour de version.
 
-L’image communautaire MinIO retenue est la dernière release publiée par le projet, mais son dépôt
-Docker Hub est désormais archivé. Elle reste adaptée à cette évaluation locale isolée. Son maintien
-ou son remplacement par une solution S3 activement maintenue doit être décidé et soumis à une revue
-de sécurité avant toute utilisation de production.
+L’image OCI officielle exacte `quay.io/minio/minio:RELEASE.2025-10-15T17-29-55Z` n’étant plus
+accessible, l’image locale est construite depuis le dépôt GitHub officiel. Le tag résout vers le
+commit complet ci-dessus. L’archive officielle de ce commit est acceptée uniquement si son SHA-256
+vaut `45521908307306e925c98d629e1c17d78c8b72b6ee242b1bfb1409f7d8ee5841`. Le builder Go et l’image
+Alpine finale sont eux-mêmes verrouillés par digest ; la seconde étape ne conserve ni source, ni
+compilateur, ni dépôt Git.
 
-L’hôte de validation ne fournit actuellement ni Docker Scout, ni Trivy, ni Grype. Les références,
-digests, Dockerfiles et comportements d’exécution ont été contrôlés, mais cela ne constitue pas une
-analyse CVE des images. Une analyse avec un scanner maintenu, suivie du traitement des avis `high`
-et `critical`, est obligatoire avant toute exposition hors du poste local ou promotion vers la
-production. Aucun scanner n’a été installé globalement pendant cette phase.
+La source MinIO ciblait Go 1.24.8. Elle est compilée avec Go 1.25.12, version stable compatible et
+verrouillée, afin d’intégrer les correctifs de sécurité de la bibliothèque standard sans modifier le
+code source MinIO ni surcharger ses modules transitifs.
+
+Le dépôt MinIO a été archivé et son code est publié comme source uniquement. Cette construction
+répond au besoin local isolé, mais ne constitue ni une approbation de MinIO pour la production ni
+une stratégie de maintenance future. Un stockage S3 activement maintenu doit être sélectionné,
+analysé et migré avant toute production.
 
 ## Architecture
 
@@ -48,21 +54,27 @@ admin-promptube-reverse-proxy
       │ promptube_admin_frontend
       ▼
 admin-promptube-app
-      │
-      │ promptube_admin_backend (internal)
-      ├──────────────────────────┬───────────────────────────┐
-      ▼                          ▼                           ▼
-admin-promptube-postgres  admin-promptube-redis  admin-promptube-object-storage
+
+promptube_admin_backend (internal)
+├─ admin-promptube-postgres
+├─ admin-promptube-redis
+└─ admin-promptube-object-storage
 ```
 
 Seul le reverse proxy publie un port. L’application et les ports internes `5432`, `6379`, `9000` et
-`9001` ne possèdent aucun binding hôte. Le proxy ne rejoint pas le réseau backend.
+`9001` ne possèdent aucun binding hôte. Le proxy et l’application ne rejoignent pas le réseau
+backend. L’application ne reçoit aucun identifiant de service de données et démarre avec le proxy
+seul.
+
+Le backend est `internal`, mais cela ne signifie pas que toute connectivité sortante de
+l’application est coupée : son réseau frontend reste un bridge non interne. Il n’existe cependant
+aucun réseau, identifiant ou connexion vers `promptube-prod`.
 
 ## Port local
 
-`8080` a été choisi le 27 juillet 2026 après vérification de `8080`, `8088` et `18080`, tous libres.
-La valeur peut être adaptée dans `.env.docker` après un nouvel inventaire avec `ss -ltnup`. Elle
-doit toujours rester liée à `127.0.0.1`.
+`8080` a été revérifié le 28 juillet 2026 après inventaire des ports hôte et reste libre. La valeur
+peut être adaptée dans `.env.docker` après un nouvel inventaire avec `ss -ltnup`. Elle doit toujours
+rester liée à `127.0.0.1`.
 
 ## Réseaux et volumes
 
@@ -101,9 +113,18 @@ La commande crée, sans afficher leur contenu :
 Chaque fichier réel est ignoré par Git et protégé en mode `600`. Les fichiers `*.example` ne
 contiennent que des marqueurs factices et ne sont jamais utilisés par Compose.
 
+La génération est atomique : `umask 077`, temporaire créé dans le même dossier, 32 octets OpenSSL
+encodés en hexadécimal, validation, mode `600`, puis renommage. Un fichier existant n’est jamais
+remplacé. Les liens symboliques, répertoires, FIFO, fichiers spéciaux, chemins extérieurs, fichiers
+vides et modes différents de `600` sont refusés avant le démarrage.
+
 PostgreSQL et MinIO utilisent respectivement `POSTGRES_PASSWORD_FILE` et `MINIO_ROOT_PASSWORD_FILE`.
 Redis lit son secret au démarrage et écrit une configuration en mode `600` dans un `tmpfs`, afin que
 le mot de passe ne figure ni dans Compose ni dans la ligne de commande du processus.
+
+Les attributs `uid`, `gid` et `mode` de Compose ne garantissent pas les permissions effectives d’un
+secret monté depuis un fichier hôte. Le contrôle d’intégration vérifie donc le type, le mode `600`
+et le montage en lecture seule dans les conteneurs.
 
 ## Commandes
 
@@ -121,6 +142,16 @@ npm run docker:up
 npm run docker:health
 npm run docker:verify
 ```
+
+Test minimal sans services de données :
+
+```bash
+./scripts/docker-compose.sh up -d --wait --wait-timeout 180 \
+  admin-promptube-app admin-promptube-reverse-proxy
+```
+
+PostgreSQL, Redis et le stockage objet ne sont alors ni créés ni requis. Après vérification de `/`
+et `/api/health`, `npm run docker:down` arrête cette stack partielle sans volume.
 
 Inspection non persistante :
 
@@ -144,7 +175,10 @@ npm run docker:down
 ```
 
 `docker:down` n’ajoute jamais `-v`. Il est interdit d’utiliser `docker compose down -v`, une
-commande `prune`, ou de supprimer manuellement un volume, réseau ou conteneur étranger.
+commande `prune`, ou de supprimer manuellement un volume, réseau ou conteneur étranger. Le wrapper
+rend `ps`, `logs`, `stop` et `down` utilisables même si `.env.docker` ou un secret est
+temporairement absent ; des valeurs publiques de substitution servent uniquement à rendre le fichier
+Compose analysable. `down` fonctionne aussi quand la stack est déjà arrêtée.
 
 ## Healthchecks
 
@@ -154,9 +188,11 @@ commande `prune`, ou de supprimer manuellement un volume, réseau ou conteneur �
 - Redis : `redis-cli ping` authentifié par le secret monté ;
 - MinIO : `GET /minio/health/live`.
 
-`npm run docker:verify` contrôle aussi les réponses HTTP via le proxy, les en-têtes, les bindings de
-ports, les labels Compose, les réseaux, les volumes, le montage des secrets, l’absence de secret
-dans les logs, l’absence de fichier `.env` dans l’image finale et l’absence de Google Fonts.
+`npm run docker:verify` contrôle aussi les réponses HTTP via le proxy, le contrat JSON
+`environment=local`, les en-têtes, les bindings de ports, les labels Compose, les réseaux, les
+volumes, les capabilities effectives, `no-new-privileges`, les racines en lecture seule, les
+`tmpfs`, le montage des secrets, l’absence de secret dans les logs et `docker inspect`, l’absence de
+fichier `.env` ou d’outillage de test dans l’image finale et l’absence de Google Fonts.
 
 ## Durcissement
 
@@ -179,8 +215,13 @@ le processus par l’utilisateur de service.
 ## Reverse proxy
 
 Nginx écoute sur `8080` dans son conteneur, masque sa version et transmet `Host`, `X-Forwarded-For`,
-`X-Forwarded-Proto`, `X-Request-ID` et `X-Correlation-ID`. Les délais sont bornés et les en-têtes de
+`X-Forwarded-Proto`, `X-Request-ID` et `X-Correlation-ID`. Les identifiants éventuellement fournis
+par un client ne sont pas considérés fiables : Nginx les remplace par son propre `$request_id`. Les
+logs excluent les query strings et les en-têtes sensibles. Les délais sont bornés et les en-têtes de
 sécurité applicatifs ne sont pas dupliqués.
+
+`client_max_body_size 10m` est une limite technique défensive, pas une autorisation d’upload ni une
+validation de contenu métier. Les erreurs proxy restent génériques.
 
 Il n’y a pas de HTTPS local dans cette phase.
 
@@ -201,6 +242,10 @@ Une future procédure de sauvegarde devra :
 
 Git ne remplace jamais cette sauvegarde.
 
+Une restauration devra partir de sauvegardes contrôlées, créer des ressources de test distinctes,
+restaurer les données sans afficher de secret, vérifier les propriétaires et exécuter les
+healthchecks. Elle ne doit jamais cibler ni monter un volume `infrastructure_*` ou `promptube-prod`.
+
 ## Rollback
 
 Pour revenir au code fusionné sans supprimer de données :
@@ -216,3 +261,16 @@ destructif n’est autorisé.
 
 `promptube-prod` possède son propre dépôt, ses propres réseaux, volumes, secrets et workflows. Cette
 stack ne doit jamais y être copiée, connectée ou fusionnée.
+
+## Limites de sécurité
+
+Cette stack reste locale, liée à loopback et sans HTTPS. Elle n’autorise ni exposition publique, ni
+upload d’image non fiable, ni CSS utilisateur. Les résultats et limites des scans d’images sont
+suivis dans [`security-debt.md`](security-debt.md). L’absence d’avis détecté ne constituerait pas à
+elle seule une preuve d’absence de vulnérabilité.
+
+Le scan Trivy officiel du 28 juillet 2026 ne détecte aucun avis high/critical dans Redis ou le proxy
+actualisé. Il conserve un high `sharp` dans l’application, un critical non atteignable dans le
+contexte gRPC de MinIO, ainsi qu’un critical non atteignable dans l’usage local de `gosu` par
+PostgreSQL. Ces avis et leurs high associés restent ouverts et bloquent toute promotion vers la
+production ; leur analyse détaillée se trouve dans le registre.

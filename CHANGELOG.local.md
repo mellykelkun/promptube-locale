@@ -1,5 +1,32 @@
 # Changelog local
 
+## 2026-07-28
+
+### Durcissement final de la fondation Docker
+
+- Remplacement de la release MinIO de septembre 2025 par la release officielle
+  `RELEASE.2025-10-15T17-29-55Z`, construite depuis le commit officiel verrouillé et une archive
+  vérifiée par SHA-256, l’image OCI exacte n’étant plus disponible.
+- Construction multi-stage du stockage objet avec une image finale Alpine non-root sans code source
+  ni compilateur ; MinIO reste strictement local et doit être remplacé avant toute production.
+- Compilation du binaire avec Go 1.25.12 stable et actualisation du proxy vers Nginx 1.31.3 sur
+  Alpine 3.24 afin d’intégrer les correctifs disponibles sans dépendance flottante.
+- Retrait de npm et Corepack de l’image Next.js finale, inutiles au lancement de `server.js`.
+- Séparation explicite de `APP_ENV=local` et `NODE_ENV=production`, avec validation Zod et tests.
+- Suppression des dépendances de démarrage artificielles de l’application vers PostgreSQL, Redis et
+  le stockage objet ; retrait de l’application du réseau backend inutilisé.
+- Durcissement atomique des secrets locaux et refus des liens symboliques, fichiers spéciaux, vides,
+  hors périmètre ou insuffisamment protégés.
+- Ajout de tests shell isolés pour la génération de secrets et le wrapper Compose.
+- Séparation des commandes Compose selon leurs besoins : les inspections et `docker:down` restent
+  utilisables sans secret, sans suppression de volume.
+- Renforcement des contrôles d’intégration sur les ports, réseaux, volumes, utilisateurs,
+  capabilities, systèmes de fichiers, `tmpfs`, secrets, images et métadonnées Docker.
+- Remplacement des identifiants de requête fournis par le client par des identifiants générés par
+  Nginx et réduction des données journalisées par le proxy.
+- Scan des cinq images avec Trivy officiel épinglé, remédiation des avis critiques de l’application
+  et du proxy, et consignation des avis transitifs non atteignables qui bloquent toute production.
+
 ## 2026-07-27
 
 - Initialisation du socle Next.js avec `create-next-app` 16.2.12.

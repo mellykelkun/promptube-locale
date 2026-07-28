@@ -33,22 +33,25 @@ navigateur depuis `modules` ou `shared`.
        │
        ▼
 admin-promptube-reverse-proxy ── frontend ── admin-promptube-app
-                                                   │
-                                           backend interne
-                              ┌────────────────────┼────────────────────┐
-                              ▼                    ▼                    ▼
-                 admin-promptube-postgres  admin-promptube-redis  admin-promptube-object-storage
+
+backend interne isolé
+├── admin-promptube-postgres
+├── admin-promptube-redis
+└── admin-promptube-object-storage
 ```
 
 - `promptube_admin_frontend` relie uniquement le proxy et l’application ;
-- `promptube_admin_backend` est interne et relie l’application aux trois services de données ;
+- `promptube_admin_backend` est interne et relie uniquement les trois services de données ;
+- l’application reste hors du backend jusqu’à sa première intégration réelle avec un service ;
 - seul le proxy publie `127.0.0.1:8080` ;
 - les trois volumes sont propres au projet Compose `promptube_admin` ;
 - les secrets sont des fichiers locaux ignorés, montés en lecture seule ;
 - aucun réseau, volume, secret ou service de `promptube-prod` n’est référencé.
 
-La présence du réseau backend ne constitue pas une connexion applicative : aucune variable de
-connexion ou bibliothèque cliente n’est ajoutée dans cette phase.
+Cette option applique le moindre privilège actuel et prouve que le healthcheck applicatif ne dépend
+pas des services de données. `internal: true` isole le backend, mais ne coupe pas à lui seul tout
+accès Internet de l’application : le réseau frontend auquel elle reste connectée n’est pas interne.
+Aucune variable de connexion ou bibliothèque cliente n’est ajoutée dans cette phase.
 
 ## Configuration
 
@@ -63,6 +66,10 @@ invalide, jamais sa valeur.
 
 Il n’existe aucune variable obligatoire propre au projet dans cette phase. Les valeurs utilisées ont
 des replis déterministes ; toute surcharge fournie doit être valide.
+
+Dans Docker, `NODE_ENV=production` active le runtime Next.js optimisé et `APP_ENV=local` décrit le
+déploiement local. Ces deux notions sont volontairement distinctes et testées. Hors Docker,
+`npm run dev` conserve `development`.
 
 ## Requête healthcheck
 
@@ -116,6 +123,7 @@ constants et ne jamais interpoler de donnée sensible.
 - CORS privé et canal admin vers production ;
 - télémétrie et agrégation de logs externes.
 - sauvegarde automatisée et test périodique de restauration des trois volumes.
+- remplacement de MinIO par un stockage S3 activement maintenu avant toute production.
 
 Ces protections ne doivent pas être simulées avant que leurs contrats et leur infrastructure soient
 approuvés.

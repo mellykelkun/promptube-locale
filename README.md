@@ -54,11 +54,12 @@ contrôle.
 | `npm run lint`                | Analyse ESLint du projet                                    |
 | `npm run typecheck`           | Vérification TypeScript sans émission                       |
 | `npm run test`                | Tests Vitest en exécution unique                            |
+| `npm run test:scripts`        | Tests isolés des scripts de secrets et du wrapper Compose   |
 | `npm run test:watch`          | Tests Vitest en mode interactif                             |
 | `npm run test:coverage`       | Tests avec rapport V8 dans `coverage/`                      |
 | `npm run format`              | Formatage Prettier des fichiers suivis par la configuration |
 | `npm run format:check`        | Vérification du formatage sans modification                 |
-| `npm run check`               | Format (contrôle seul), lint, types, tests puis build       |
+| `npm run check`               | Format (contrôle seul), lint, types, tests, scripts, build  |
 | `npm run audit`               | Audit npm complet, sans correction automatique              |
 | `npm run audit:prod`          | Audit npm limité aux dépendances de production              |
 | `npm run docker:secrets:init` | Génération locale des secrets Docker ignorés                |
@@ -101,11 +102,11 @@ src/
     ├── types/
     ├── utilities/
     └── validation/
-tests/                      # Tests comportementaux Vitest
+tests/                      # Tests Vitest et tests shell isolés
 docs/architecture.md        # Décisions et frontières locales
 docs/docker-local.md        # Exploitation de la stack Docker locale
-docker/                     # Proxy Nginx et démarrage sécurisé de Redis
-scripts/                    # Commandes Compose et contrôles d’intégration
+docker/                     # Images locales, proxy et entrypoints sécurisés
+scripts/                    # Commandes Compose, secrets et contrôles d’intégration
 secrets/                    # Instructions et exemples, secrets réels ignorés
 compose.yaml                # Stack locale isolée promptube_admin
 ```
@@ -127,6 +128,10 @@ Les valeurs fournies sont validées avec Zod. Une valeur présente mais invalide
 explicite sans réafficher son contenu. Les fichiers `.env` réels restent ignorés ; seul
 `.env.example` est versionné.
 
+`APP_ENV` accepte explicitement `development`, `local`, `test` ou `production`. Dans le conteneur,
+`NODE_ENV=production` sélectionne le runtime Next.js optimisé tandis que `APP_ENV=local` décrit
+l’environnement réel. Le serveur `npm run dev` utilise `development` par défaut.
+
 Aucune variable PostgreSQL, Redis, stockage ou paiement n’existe tant que ces services ne sont pas
 utilisés par l’application. Les identifiants non sensibles de l’infrastructure sont placés dans
 `.env.docker`, créé localement depuis `.env.docker.example`. Les mots de passe restent exclusivement
@@ -138,16 +143,21 @@ Le projet Compose `promptube_admin` fournit cinq services :
 
 ```text
 127.0.0.1:8080 → admin-promptube-reverse-proxy → admin-promptube-app
-                                                   │
-                                                   └─ backend interne
-                                                      ├─ admin-promptube-postgres
-                                                      ├─ admin-promptube-redis
-                                                      └─ admin-promptube-object-storage
+
+promptube_admin_backend (interne, sans application connectée)
+├─ admin-promptube-postgres
+├─ admin-promptube-redis
+└─ admin-promptube-object-storage
 ```
 
 Le port `8080` a été retenu après inventaire et reste configurable dans `.env.docker`. Seul le
 reverse proxy le publie, exclusivement sur `127.0.0.1`. Aucun port PostgreSQL, Redis, application,
 API S3 ou console de stockage n’est publié.
+
+L’application ne dépend encore d’aucun service de données : elle est volontairement absente du
+réseau backend et peut démarrer avec le proxy seul. Le réseau frontend n’est pas marqué interne ;
+une application qui y est connectée peut donc conserver une connectivité sortante. Aucune
+information de connexion vers les trois services ou vers `promptube-prod` ne lui est fournie.
 
 Première initialisation :
 
@@ -160,6 +170,11 @@ npm run docker:build
 npm run docker:up
 npm run docker:verify
 ```
+
+La génération de secrets utilise des fichiers temporaires créés dans `secrets/`, un `umask 077`,
+`openssl rand -hex 32` et un renommage atomique. Elle refuse les liens symboliques, répertoires,
+fichiers spéciaux, fichiers vides et chemins résolus hors du dossier. Un secret existant n’est
+jamais remplacé.
 
 Arrêt conservant les données :
 
@@ -176,13 +191,15 @@ Ne jamais ajouter `-v` et ne jamais utiliser une commande `prune`. Consulter
 
 ```json
 {
-  "environment": "development",
+  "environment": "local",
   "service": "promptube-admin-locale",
   "status": "ok",
-  "timestamp": "2026-07-27T12:00:00.000Z",
+  "timestamp": "<horodatage ISO 8601 courant>",
   "version": "0.1.0"
 }
 ```
+
+La valeur Docker est `local`; un serveur lancé par `npm run dev` retourne `development`.
 
 Les paramètres de requête inattendus et les identifiants de corrélation invalides sont rejetés par
 une réponse `400` sûre. Le endpoint ne retourne ni chemin, ni variable brute, ni stack trace, ni
@@ -229,8 +246,8 @@ Ce dossier est un dépôt Git local indépendant :
 - les fusions sont locales et aucun push n’est effectué ;
 - le dépôt ne doit jamais inclure `promptube-prod` ni les documents du dossier parent.
 
-La fondation applicative a été fusionnée localement dans `develop`. La fondation Docker est
-développée sur `chore/admin-docker-foundation` et ne doit pas être fusionnée automatiquement.
+Les branches de travail ne sont fusionnées dans `develop` qu’après validation complète, par merge
+local explicite. `main` n’est jamais utilisée pour le développement direct.
 
 ## Fonctionnalités absentes
 

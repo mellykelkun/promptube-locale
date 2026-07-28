@@ -2,7 +2,7 @@
 
 ## Cadre
 
-- **Dernière vérification :** 2026-07-27
+- **Dernière vérification :** 2026-07-28
 - **Responsable du suivi :** propriétaire du projet Promptube
 - **Commandes de référence :** `npm run audit` et `npm run audit:prod`
 - **État :** avis ouverts, non corrigés et non masqués
@@ -11,6 +11,96 @@ Les audits restent séparés de `npm run check` parce que les avis ci-dessous pr
 sortie non nul sans correction stable compatible. Cette séparation ne vaut ni correction ni
 acceptation définitive du risque. Aucun `audit fix`, override transitif, paquet canary ou
 rétrogradation n’est autorisé pour les contourner.
+
+## Stockage objet local
+
+### MinIO — GHSA-jjjj-jwhf-8rgr / CVE-2025-62506
+
+- **Version antérieure :** `RELEASE.2025-09-07T16-13-09Z`, affectée.
+- **Version locale retenue :** `RELEASE.2025-10-15T17-29-55Z`.
+- **Source :** tag officiel résolu vers `9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a`; archive vérifiée
+  par SHA-256 `45521908307306e925c98d629e1c17d78c8b72b6ee242b1bfb1409f7d8ee5841`.
+- **Correction connue :** le correctif de l’avis est intégré à cette release de sécurité. L’ancienne
+  release n’est plus référencée ni exécutée par la stack.
+- **Exposition actuelle :** stockage local non publié sur l’hôte, sans bucket ou donnée métier.
+- **Limite :** la correction de cet avis ne signifie pas que toutes les vulnérabilités de l’image ou
+  du produit sont résolues. Le dépôt officiel est archivé et publié comme source uniquement.
+- **Mesures compensatoires :** réseau backend interne, utilisateur non-root, racine en lecture
+  seule, capabilities supprimées, secret par fichier, aucun upload métier et aucune exposition
+  externe.
+- **Blocage production :** MinIO n’est pas approuvé comme stockage de production. Un moteur S3
+  activement maintenu, son plan de migration et une revue de sécurité sont obligatoires avant toute
+  production.
+- **Stratégie :** conserver le tag, le commit, l’archive et les images de base verrouillés ; suivre
+  les avis ; remplacer le moteur avant production plutôt que poursuivre une dépendance archivée.
+- **Référence vérifiée :**
+  [avis officiel MinIO](https://github.com/minio/minio/security/advisories/GHSA-jjjj-jwhf-8rgr).
+
+## Scan des images locales
+
+Le 28 juillet 2026, les cinq images runtime ont été analysées avec l’image officielle
+`aquasec/trivy:0.71.2`, verrouillée par le digest
+`sha256:f5d0e600ecda7449e2a9b272805aef698631d3bb3f3a739a750de2c6819acdc9`. Chaque image a été
+exportée dans une archive temporaire ; le scanner n’a reçu ni socket Docker, ni secret, ni accès au
+dépôt. La base de vulnérabilités v2 datait du 27 juillet 2026 à 19:20:18 UTC. Archives, rapports et
+cache temporaires ont été supprimés après synthèse.
+
+| Image               | Critical | High | Décision locale                                               |
+| ------------------- | -------- | ---- | ------------------------------------------------------------- |
+| Application Next.js | 0        | 1    | `sharp` déjà suivi ; aucun traitement d’image autorisé        |
+| Reverse proxy       | 0        | 0    | Nginx 1.31.3 / Alpine 3.24 retenu après remédiation           |
+| Stockage objet      | 1        | 22   | non exploitable dans le périmètre actuel ; production bloquée |
+| PostgreSQL          | 1        | 17   | avis portés par le bootstrap `gosu` ; production à réévaluer  |
+| Redis               | 0        | 0    | aucun avis high ou critical détecté                           |
+
+### Avis critique gRPC dans le binaire MinIO
+
+- **Identifiant :** CVE-2026-33186.
+- **Paquet :** `google.golang.org/grpc` 1.72.0 ; correction connue en 1.79.3.
+- **Condition d’exploitation :** serveur gRPC utilisant une autorisation fondée sur le chemin avec
+  des règles deny canoniques et une règle allow de repli.
+- **Exposition actuelle :** MinIO n’ouvre dans cette stack que ses interfaces HTTP S3 et console sur
+  9000/9001, dans le backend interne, sans listener gRPC, sans règle RBAC gRPC et sans port hôte.
+  Les conditions de l’avis ne sont donc pas présentes.
+- **Décision :** non bloquant pour cette validation locale uniquement. Toute exposition, donnée
+  métier, connexion à un client non fiable ou production reste bloquée.
+- **Correction non appliquée :** une surcharge de module aurait modifié le graphe du tag officiel
+  sans suite de compatibilité MinIO maintenue. Aucun override transitif non validé n’est introduit.
+- **Référence vérifiée :** [NVD CVE-2026-33186](https://nvd.nist.gov/vuln/detail/CVE-2026-33186).
+
+Les 22 avis high du binaire MinIO concernent les versions embarquées de `golang.org/x/crypto`
+0.37.0, `golang.org/x/net` 0.39.0, `go.opentelemetry.io/otel/sdk` 1.35.0,
+`github.com/buger/jsonparser` 1.1.1, `github.com/go-jose/go-jose/v4` 4.1.0,
+`github.com/apache/thrift` 0.21.0, `github.com/prometheus/prometheus` 0.303.0 et
+`google.golang.org/grpc` 1.72.0. Des versions corrigées sont connues, mais leur application isolée
+constituerait une divergence non validée du code MinIO archivé. Elles renforcent l’obligation de
+remplacer MinIO avant la production.
+
+### Avis critique Go dans l’image PostgreSQL
+
+- **Identifiant :** CVE-2025-68121.
+- **Paquet :** bibliothèque standard Go 1.24.6 intégrée à `/usr/local/bin/gosu`; correction connue
+  en Go 1.24.13.
+- **Condition d’exploitation :** reprise de session TLS dans une application utilisant les
+  configurations TLS concernées.
+- **Exposition actuelle :** `gosu` est l’outil local, sans listener réseau, qui abandonne les
+  privilèges pendant le bootstrap PostgreSQL avec des arguments constants contrôlés par l’image. Le
+  processus final est PostgreSQL sous son utilisateur dédié ; les conditions TLS de l’avis ne sont
+  pas présentes dans `gosu`.
+- **Décision :** non bloquant pour l’environnement local non publié. Une image PostgreSQL officielle
+  rescannée sans cet avis est requise avant toute production.
+
+Les 17 avis high PostgreSQL sont majoritairement associés à la même bibliothèque standard de `gosu`;
+les autres concernent `c-ares` et `libcurl` de l’image Alpine. L’image officielle est verrouillée,
+PostgreSQL n’est pas publié sur l’hôte et aucun schéma ou client applicatif n’existe. Ces mesures
+réduisent l’exposition sans résoudre les avis.
+
+### Limites du scan
+
+Trivy réalise une analyse de présence de paquets, pas une preuve de joignabilité de chaque fonction
+vulnérable. Le verdict d’exploitabilité ci-dessus dépend donc aussi des listeners, usages et
+frontières runtime vérifiés. Inversement, zéro résultat ne prouve pas l’absence de vulnérabilité. Un
+nouveau scan est obligatoire avant toute exposition, mise à jour d’image ou projet de production.
 
 ## Dépendances de production
 
