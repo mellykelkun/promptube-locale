@@ -3,8 +3,9 @@
 ## Portée
 
 Cette stack sert exclusivement au développement et à la validation locale de l’administration
-Promptube. Elle ne contient aucune donnée métier, migration, authentification ou connexion à
-`promptube-prod`.
+Promptube. Elle contient l’infrastructure PostgreSQL/Redis, les services one-shot de provisioning,
+migration et bootstrap, ainsi que l’authentification locale. Elle ne contient aucune donnée métier
+et ne se connecte jamais à `promptube-prod`.
 
 Le nom Compose est fixé à `promptube_admin`. Les noms de services sont préfixés `admin-promptube-*`,
 sans `container_name`, afin que Compose conserve l’isolation et la gestion de leur cycle de vie.
@@ -56,15 +57,16 @@ admin-promptube-reverse-proxy
 admin-promptube-app
 
 promptube_admin_backend (internal)
+├─ admin-promptube-app
 ├─ admin-promptube-postgres
 ├─ admin-promptube-redis
-└─ admin-promptube-object-storage
+└─ admin-promptube-object-storage  # profil storage uniquement
 ```
 
 Seul le reverse proxy publie un port. L’application et les ports internes `5432`, `6379`, `9000` et
-`9001` ne possèdent aucun binding hôte. Le proxy et l’application ne rejoignent pas le réseau
-backend. L’application ne reçoit aucun identifiant de service de données et démarre avec le proxy
-seul.
+`9001` ne possèdent aucun binding hôte. L’application rejoint le backend pour PostgreSQL et Redis,
+mais conserve un liveness indépendant et peut démarrer avec le proxy seul. MinIO ne démarre plus par
+défaut et nécessite le profil explicite `storage`.
 
 Le backend est `internal`, mais cela ne signifie pas que toute connectivité sortante de
 l’application est coupée : son réseau frontend reste un bridge non interne. Il n’existe cependant
@@ -108,7 +110,10 @@ La commande crée, sans afficher leur contenu :
 
 - `secrets/postgres-password` ;
 - `secrets/redis-password` ;
-- `secrets/object-storage-password`.
+- `secrets/object-storage-password` ;
+- `secrets/postgres-app-password` ;
+- `secrets/postgres-migration-password` ;
+- `secrets/better-auth-secret`.
 
 Chaque fichier réel est ignoré par Git et protégé en mode `600`. Les fichiers `*.example` ne
 contiennent que des marqueurs factices et ne sont jamais utilisés par Compose.
@@ -119,8 +124,10 @@ remplacé. Les liens symboliques, répertoires, FIFO, fichiers spéciaux, chemin
 vides et modes différents de `600` sont refusés avant le démarrage.
 
 PostgreSQL et MinIO utilisent respectivement `POSTGRES_PASSWORD_FILE` et `MINIO_ROOT_PASSWORD_FILE`.
-Redis lit son secret au démarrage et écrit une configuration en mode `600` dans un `tmpfs`, afin que
-le mot de passe ne figure ni dans Compose ni dans la ligne de commande du processus.
+L’application lit uniquement les secrets runtime nécessaires : mot de passe PostgreSQL applicatif,
+mot de passe Redis et secret Better Auth. Le compte PostgreSQL bootstrap n’est pas monté dans
+Next.js. Redis lit son secret au démarrage et écrit une configuration en mode `600` dans un `tmpfs`,
+afin que le mot de passe ne figure ni dans Compose ni dans la ligne de commande du processus.
 
 Les attributs `uid`, `gid` et `mode` de Compose ne garantissent pas les permissions effectives d’un
 secret monté depuis un fichier hôte. Le contrôle d’intégration vérifie donc le type, le mode `600`
@@ -143,6 +150,13 @@ npm run docker:health
 npm run docker:verify
 ```
 
+Le stockage objet ne démarre que sur demande :
+
+```bash
+npm run docker:up:storage
+npm run docker:verify:storage
+```
+
 Test minimal sans services de données :
 
 ```bash
@@ -150,8 +164,22 @@ Test minimal sans services de données :
   admin-promptube-app admin-promptube-reverse-proxy
 ```
 
-PostgreSQL, Redis et le stockage objet ne sont alors ni créés ni requis. Après vérification de `/`
-et `/api/health`, `npm run docker:down` arrête cette stack partielle sans volume.
+PostgreSQL, Redis et le stockage objet ne sont alors ni créés ni requis. Après vérification de
+`/login` et `/api/health/live`, `npm run docker:down` arrête cette stack partielle sans volume.
+
+Provisioning, migration et premier administrateur :
+
+```bash
+npm run db:provision
+npm run db:migrate
+npm run db:status
+npm run db:backup
+npm run db:restore:test
+npm run admin:bootstrap
+```
+
+`db:migrate` est explicite et n’est jamais lancé par le démarrage normal de Next.js.
+`admin:bootstrap` est interactif, local, et refuse de créer un second premier administrateur.
 
 Inspection non persistante :
 
@@ -183,16 +211,17 @@ Compose analysable. `down` fonctionne aussi quand la stack est déjà arrêtée.
 ## Healthchecks
 
 - proxy : `GET /nginx-health` ;
-- application : `GET /api/health` ;
+- application : `GET /api/health/live` ;
 - PostgreSQL : `pg_isready` avec les identifiants non sensibles ;
 - Redis : `redis-cli ping` authentifié par le secret monté ;
-- MinIO : `GET /minio/health/live`.
+- MinIO : `GET /minio/health/live` uniquement si le profil `storage` est actif.
 
-`npm run docker:verify` contrôle aussi les réponses HTTP via le proxy, le contrat JSON
-`environment=local`, les en-têtes, les bindings de ports, les labels Compose, les réseaux, les
-volumes, les capabilities effectives, `no-new-privileges`, les racines en lecture seule, les
-`tmpfs`, le montage des secrets, l’absence de secret dans les logs et `docker inspect`, l’absence de
-fichier `.env` ou d’outillage de test dans l’image finale et l’absence de Google Fonts.
+`npm run docker:verify` contrôle aussi les réponses HTTP via le proxy, le liveness, le readiness
+PostgreSQL/Redis, le contrat JSON `environment=local`, les en-têtes, les bindings de ports, les
+labels Compose, les réseaux, les volumes, les capabilities effectives, `no-new-privileges`, les
+racines en lecture seule, les `tmpfs`, le montage des secrets, l’absence de secret dans les logs et
+`docker inspect`, l’absence de fichier `.env` ou d’outillage de test dans l’image finale et
+l’absence de Google Fonts.
 
 ## Durcissement
 
@@ -227,9 +256,9 @@ Il n’y a pas de HTTPS local dans cette phase.
 
 ## Persistance et sauvegardes
 
-`docker:down` conserve les trois volumes. Avant toute donnée réelle, il faudra mettre en place une
-sauvegarde chiffrée séparée pour PostgreSQL, Redis si sa persistance devient nécessaire, le stockage
-objet et les secrets, puis tester une restauration complète.
+`docker:down` conserve les trois volumes. `npm run db:backup` produit un dump PostgreSQL local
+ignoré par Git sous `backups/`, avec permissions `600` et SHA-256 associé. `npm run db:restore:test`
+restaure ce dump dans un conteneur PostgreSQL éphémère, sans port hôte ni volume persistant.
 
 Une future procédure de sauvegarde devra :
 

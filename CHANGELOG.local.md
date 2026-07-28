@@ -2,6 +2,27 @@
 
 ## 2026-07-28
 
+### Fondation identité et accès locale
+
+- Ajout de Drizzle ORM, du schéma PostgreSQL versionné et d’une migration SQL initiale générée.
+- Création de rôles PostgreSQL séparés : bootstrap, migration et runtime applicatif.
+- Ajout du provisioning idempotent, de l’application explicite des migrations, du statut, du backup
+  PostgreSQL et d’un test de restauration en conteneur éphémère.
+- Connexion serveur uniquement à PostgreSQL et Redis, sans exposition de mot de passe ou URL de
+  connexion.
+- Ajout de Better Auth avec email/mot de passe, inscription publique désactivée, hachage Argon2id,
+  TOTP obligatoire, sessions serveur révocables et rate limiting Redis.
+- Ajout de la commande interactive locale `admin:bootstrap` pour créer le premier administrateur
+  sans transmettre le mot de passe en argument, variable Compose ou fichier.
+- Ajout d’un journal d’audit persistant `admin_audit_events` sans mot de passe, token, cookie,
+  secret TOTP ou code de secours.
+- Séparation de `/api/health/live` et `/api/health/ready`, le readiness vérifiant PostgreSQL et
+  Redis sans publier d’information interne.
+- Retrait de MinIO du démarrage par défaut via le profil explicite `storage`, sans supprimer son
+  image ni son volume.
+- Extension des tests de secrets, du wrapper Compose, de la politique de mot de passe, de la lecture
+  de secrets, de la configuration et du liveness.
+
 ### Durcissement final de la fondation Docker
 
 - Remplacement de la release MinIO de septembre 2025 par la release officielle
@@ -14,7 +35,8 @@
 - Retrait de npm et Corepack de l’image Next.js finale, inutiles au lancement de `server.js`.
 - Séparation explicite de `APP_ENV=local` et `NODE_ENV=production`, avec validation Zod et tests.
 - Suppression des dépendances de démarrage artificielles de l’application vers PostgreSQL, Redis et
-  le stockage objet ; retrait de l’application du réseau backend inutilisé.
+  le stockage objet ; le réseau backend a ensuite été réintroduit lors de la connexion réelle à
+  PostgreSQL et Redis.
 - Durcissement atomique des secrets locaux et refus des liens symboliques, fichiers spéciaux, vides,
   hors périmètre ou insuffisamment protégés.
 - Ajout de tests shell isolés pour la génération de secrets et le wrapper Compose.

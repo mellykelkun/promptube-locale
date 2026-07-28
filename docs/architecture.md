@@ -2,10 +2,11 @@
 
 ## Portée
 
-Cette architecture couvre le socle local Next.js et ses services d’infrastructure isolés. Elle
-n’autorise aucune connexion à la production, migration, donnée métier, système de paiement ou
-fonctionnalité métier. PostgreSQL, Redis et le stockage objet sont initialisés vides et ne sont pas
-encore utilisés par le code applicatif.
+Cette architecture couvre le socle local Next.js, ses services d’infrastructure isolés, PostgreSQL,
+Redis, les migrations Drizzle, l’authentification administrateur locale, le TOTP obligatoire, les
+sessions révocables et l’audit persistant. Elle n’autorise aucune connexion à la production, donnée
+métier, système de paiement ou fonctionnalité commerciale. Le stockage objet reste hors profil par
+défaut et n’est pas utilisé par le code applicatif.
 
 ## Frontières internes
 
@@ -35,23 +36,25 @@ navigateur depuis `modules` ou `shared`.
 admin-promptube-reverse-proxy ── frontend ── admin-promptube-app
 
 backend interne isolé
+├── admin-promptube-app
 ├── admin-promptube-postgres
 ├── admin-promptube-redis
-└── admin-promptube-object-storage
+└── admin-promptube-object-storage  # profil storage uniquement
 ```
 
 - `promptube_admin_frontend` relie uniquement le proxy et l’application ;
-- `promptube_admin_backend` est interne et relie uniquement les trois services de données ;
-- l’application reste hors du backend jusqu’à sa première intégration réelle avec un service ;
+- `promptube_admin_backend` est interne et relie l’application aux services PostgreSQL et Redis ;
+- le stockage objet reste sous profil `storage` explicite ;
 - seul le proxy publie `127.0.0.1:8080` ;
 - les trois volumes sont propres au projet Compose `promptube_admin` ;
 - les secrets sont des fichiers locaux ignorés, montés en lecture seule ;
 - aucun réseau, volume, secret ou service de `promptube-prod` n’est référencé.
 
-Cette option applique le moindre privilège actuel et prouve que le healthcheck applicatif ne dépend
-pas des services de données. `internal: true` isole le backend, mais ne coupe pas à lui seul tout
-accès Internet de l’application : le réseau frontend auquel elle reste connectée n’est pas interne.
-Aucune variable de connexion ou bibliothèque cliente n’est ajoutée dans cette phase.
+Le liveness applicatif reste indépendant de PostgreSQL et Redis, ce qui permet de démarrer app et
+proxy seuls pour vérifier l’absence de dépendance artificielle au boot. `internal: true` isole le
+backend, mais ne coupe pas à lui seul tout accès Internet de l’application : le réseau frontend
+auquel elle reste connectée n’est pas interne. Aucune variable de connexion à `promptube-prod` n’est
+ajoutée.
 
 ## Configuration
 
@@ -64,8 +67,9 @@ La configuration est séparée en deux entrées :
 Zod valide les valeurs à l’import de la couche concernée. Les messages d’échec indiquent le champ
 invalide, jamais sa valeur.
 
-Il n’existe aucune variable obligatoire propre au projet dans cette phase. Les valeurs utilisées ont
-des replis déterministes ; toute surcharge fournie doit être valide.
+Les variables non sensibles de PostgreSQL, Redis, Better Auth et des origines locales sont validées
+par Zod. Les mots de passe et secrets sont toujours lus par chemin de fichier secret ; aucune URL
+contenant un mot de passe n’est construite ou journalisée.
 
 Dans Docker, `NODE_ENV=production` active le runtime Next.js optimisé et `APP_ENV=local` décrit le
 déploiement local. Ces deux notions sont volontairement distinctes et testées. Hors Docker,
@@ -74,7 +78,7 @@ déploiement local. Ces deux notions sont volontairement distinctes et testées.
 ## Requête healthcheck
 
 ```text
-GET /api/health
+GET /api/health/live
   → création ou validation de la corrélation
   → rejet de tout paramètre inattendu
   → lecture de métadonnées validées
@@ -84,6 +88,10 @@ GET /api/health
 
 Les erreurs attendues deviennent des `AppError` typées. Toute erreur inattendue est convertie en
 `INTERNAL_ERROR` avec un message public générique. Aucune stack trace n’est sérialisée.
+
+`GET /api/health` est l’alias compatible du liveness. `GET /api/health/ready` vérifie PostgreSQL et
+Redis avec des timeouts courts et retourne `503` si l’une des dépendances est indisponible, sans
+publier d’hôte, port, utilisateur, URL ou stack trace.
 
 ## Journalisation
 
@@ -111,15 +119,21 @@ constants et ne jamais interpoler de donnée sensible.
 - DNS prefetch désactivé ;
 - frontière serveur vérifiée par Next.js ;
 - validation du healthcheck ;
+- Better Auth avec inscription publique désactivée ;
+- hachage Argon2id des mots de passe administrateur ;
+- TOTP obligatoire sans trusted device ;
+- sessions serveur persistantes et révocables ;
+- rate limiting Redis ;
+- rôles PostgreSQL séparés pour bootstrap, migrations et runtime ;
+- audit persistant sans secret ;
 - réponses d’erreur et logs sans détails sensibles.
 
 ## Protections différées
 
 - CSP : à définir avec l’interface et ses ressources finales ;
 - HSTS : à appliquer seulement derrière le proxy HTTPS validé ;
-- authentification, MFA, sessions, cookies et CSRF ;
-- RBAC et audit métier ;
-- rate limiting ;
+- RBAC avancé et permissions fines ;
+- reset email, OAuth, magic link et fournisseurs sociaux ;
 - CORS privé et canal admin vers production ;
 - télémétrie et agrégation de logs externes.
 - sauvegarde automatisée et test périodique de restauration des trois volumes.

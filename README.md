@@ -1,9 +1,9 @@
 # Promptube Admin locale
 
 Application Next.js privée destinée à l’administration locale de Promptube. Cette version fournit la
-fondation technique et son infrastructure Docker locale isolée : structure applicative, contrôles
-qualité, healthcheck, gestion sûre des erreurs, interface neutre, proxy, PostgreSQL, Redis et
-stockage objet. Elle ne manipule encore aucune donnée métier.
+fondation technique, son infrastructure Docker locale isolée, PostgreSQL, Redis, Drizzle ORM, Better
+Auth, l’authentification administrateur locale, le TOTP obligatoire, les sessions révocables et le
+journal d’audit. Elle ne manipule encore aucune donnée métier.
 
 ## Prérequis
 
@@ -46,31 +46,40 @@ contrôle.
 
 ## Scripts
 
-| Script                        | Rôle                                                        |
-| ----------------------------- | ----------------------------------------------------------- |
-| `npm run dev`                 | Serveur de développement Next.js                            |
-| `npm run build`               | Build de production                                         |
-| `npm run start`               | Serveur du build, à lancer explicitement                    |
-| `npm run lint`                | Analyse ESLint du projet                                    |
-| `npm run typecheck`           | Vérification TypeScript sans émission                       |
-| `npm run test`                | Tests Vitest en exécution unique                            |
-| `npm run test:scripts`        | Tests isolés des scripts de secrets et du wrapper Compose   |
-| `npm run test:watch`          | Tests Vitest en mode interactif                             |
-| `npm run test:coverage`       | Tests avec rapport V8 dans `coverage/`                      |
-| `npm run format`              | Formatage Prettier des fichiers suivis par la configuration |
-| `npm run format:check`        | Vérification du formatage sans modification                 |
-| `npm run check`               | Format (contrôle seul), lint, types, tests, scripts, build  |
-| `npm run audit`               | Audit npm complet, sans correction automatique              |
-| `npm run audit:prod`          | Audit npm limité aux dépendances de production              |
-| `npm run docker:secrets:init` | Génération locale des secrets Docker ignorés                |
-| `npm run docker:config`       | Validation de la configuration Compose                      |
-| `npm run docker:build`        | Construction des images administratives                     |
-| `npm run docker:up`           | Démarrage avec attente des healthchecks                     |
-| `npm run docker:ps`           | État des services Compose                                   |
-| `npm run docker:logs`         | Dernières lignes de logs, sans suivi persistant             |
-| `npm run docker:health`       | Vérification des cinq healthchecks                          |
-| `npm run docker:verify`       | Contrôles d’intégration, de ports et d’isolation            |
-| `npm run docker:down`         | Arrêt sans suppression des volumes                          |
+| Script                          | Rôle                                                        |
+| ------------------------------- | ----------------------------------------------------------- |
+| `npm run dev`                   | Serveur de développement Next.js                            |
+| `npm run build`                 | Build de production                                         |
+| `npm run start`                 | Serveur du build, à lancer explicitement                    |
+| `npm run lint`                  | Analyse ESLint du projet                                    |
+| `npm run typecheck`             | Vérification TypeScript sans émission                       |
+| `npm run test`                  | Tests Vitest en exécution unique                            |
+| `npm run test:scripts`          | Tests isolés des scripts de secrets et du wrapper Compose   |
+| `npm run test:watch`            | Tests Vitest en mode interactif                             |
+| `npm run test:coverage`         | Tests avec rapport V8 dans `coverage/`                      |
+| `npm run format`                | Formatage Prettier des fichiers suivis par la configuration |
+| `npm run format:check`          | Vérification du formatage sans modification                 |
+| `npm run check`                 | Format (contrôle seul), lint, types, tests, scripts, build  |
+| `npm run audit`                 | Audit npm complet, sans correction automatique              |
+| `npm run audit:prod`            | Audit npm limité aux dépendances de production              |
+| `npm run docker:secrets:init`   | Génération locale des secrets Docker ignorés                |
+| `npm run docker:config`         | Validation de la configuration Compose                      |
+| `npm run docker:build`          | Construction des images administratives                     |
+| `npm run docker:up`             | Démarrage avec attente des healthchecks                     |
+| `npm run docker:ps`             | État des services Compose                                   |
+| `npm run docker:logs`           | Dernières lignes de logs, sans suivi persistant             |
+| `npm run docker:health`         | Vérification des healthchecks de la stack active            |
+| `npm run docker:verify`         | Contrôles d’intégration, de ports et d’isolation            |
+| `npm run docker:up:storage`     | Démarrage explicite du stockage objet optionnel             |
+| `npm run docker:verify:storage` | Vérification lorsque le profil stockage est actif           |
+| `npm run docker:down`           | Arrêt sans suppression des volumes                          |
+| `npm run db:check`              | Revue statique des migrations SQL versionnées               |
+| `npm run db:provision`          | Provisioning idempotent des rôles PostgreSQL locaux         |
+| `npm run db:migrate`            | Application explicite des migrations Drizzle                |
+| `npm run db:status`             | Statut des migrations appliquées                            |
+| `npm run db:backup`             | Sauvegarde locale PostgreSQL ignorée par Git                |
+| `npm run db:restore:test`       | Restauration dans un conteneur PostgreSQL éphémère          |
+| `npm run admin:bootstrap`       | Création interactive locale du premier administrateur       |
 
 `npm run format` est le seul de ces scripts qualité autorisé à réécrire des fichiers.
 `npm run check`, `npm run audit` et `npm run audit:prod` sont strictement non modificatifs. Les
@@ -85,13 +94,16 @@ livraison.
 src/
 ├── app/                    # App Router, pages et Route Handlers
 ├── modules/
-│   ├── auth/               # Responsabilité différée documentée
+│   ├── auth/               # Interface et composants d’authentification admin
 │   ├── dashboard/          # Tableau de bord technique actuel
 │   ├── catalog/            # Responsabilité différée documentée
 │   ├── publications/       # Responsabilité différée documentée
-│   └── audit/              # Responsabilité différée documentée
+│   └── audit/              # Consultation locale du journal d’audit
 ├── server/
+│   ├── auth/               # Better Auth, mots de passe, sessions et DAL
 │   ├── config/             # Configuration serveur validée
+│   ├── database/           # Drizzle ORM, schéma et client PostgreSQL
+│   ├── redis/              # Client Redis et rate limiting
 │   ├── security/           # Redaction des données sensibles
 │   ├── errors/             # Erreurs typées et réponses HTTP sûres
 │   └── observability/      # Corrélation et logs structurés
@@ -132,32 +144,34 @@ explicite sans réafficher son contenu. Les fichiers `.env` réels restent ignor
 `NODE_ENV=production` sélectionne le runtime Next.js optimisé tandis que `APP_ENV=local` décrit
 l’environnement réel. Le serveur `npm run dev` utilise `development` par défaut.
 
-Aucune variable PostgreSQL, Redis, stockage ou paiement n’existe tant que ces services ne sont pas
-utilisés par l’application. Les identifiants non sensibles de l’infrastructure sont placés dans
-`.env.docker`, créé localement depuis `.env.docker.example`. Les mots de passe restent exclusivement
-dans les fichiers ignorés de `secrets/`.
+PostgreSQL, Redis et Better Auth utilisent des identifiants non sensibles dans `.env.docker`, créé
+localement depuis `.env.docker.example`. Les mots de passe et secrets restent exclusivement dans les
+fichiers ignorés de `secrets/` et sont lus via des chemins `*_FILE`.
 
 ## Infrastructure Docker locale
 
-Le projet Compose `promptube_admin` fournit cinq services :
+Le projet Compose `promptube_admin` fournit quatre services par défaut et un stockage objet
+optionnel :
 
 ```text
 127.0.0.1:8080 → admin-promptube-reverse-proxy → admin-promptube-app
 
-promptube_admin_backend (interne, sans application connectée)
+promptube_admin_backend (interne)
+├─ admin-promptube-app
 ├─ admin-promptube-postgres
 ├─ admin-promptube-redis
-└─ admin-promptube-object-storage
+└─ admin-promptube-object-storage  # profil storage uniquement
 ```
 
 Le port `8080` a été retenu après inventaire et reste configurable dans `.env.docker`. Seul le
 reverse proxy le publie, exclusivement sur `127.0.0.1`. Aucun port PostgreSQL, Redis, application,
 API S3 ou console de stockage n’est publié.
 
-L’application ne dépend encore d’aucun service de données : elle est volontairement absente du
-réseau backend et peut démarrer avec le proxy seul. Le réseau frontend n’est pas marqué interne ;
-une application qui y est connectée peut donc conserver une connectivité sortante. Aucune
-information de connexion vers les trois services ou vers `promptube-prod` ne lui est fournie.
+L’application est connectée au backend pour PostgreSQL et Redis, mais son liveness reste indépendant
+et elle peut démarrer avec le proxy seul pour prouver l’absence de dépendance artificielle au
+démarrage. Le réseau frontend n’est pas marqué interne ; une application qui y est connectée peut
+donc conserver une connectivité sortante. Aucune information de connexion à `promptube-prod` ne lui
+est fournie.
 
 Première initialisation :
 
@@ -187,7 +201,7 @@ Ne jamais ajouter `-v` et ne jamais utiliser une commande `prune`. Consulter
 
 ## Healthcheck
 
-`GET /api/health` retourne uniquement :
+`GET /api/health` et `GET /api/health/live` retournent uniquement :
 
 ```json
 {
@@ -205,11 +219,38 @@ Les paramètres de requête inattendus et les identifiants de corrélation inval
 une réponse `400` sûre. Le endpoint ne retourne ni chemin, ni variable brute, ni stack trace, ni
 version de dépendance.
 
+`GET /api/health/ready` vérifie PostgreSQL et Redis avec des timeouts courts. En cas de panne, il
+renvoie `503` avec un état générique, sans hôte, port, utilisateur, URL ou stack trace.
+
+## Authentification locale
+
+L’inscription publique est désactivée. Le premier administrateur se crée uniquement depuis un
+service Docker one-shot local :
+
+```bash
+npm run docker:up
+npm run db:provision
+npm run db:migrate
+npm run admin:bootstrap
+```
+
+La commande demande email, nom et mot de passe de manière interactive. Le mot de passe n’est pas
+passé en argument, variable Compose ou fichier. La politique accepte les phrases de passe de 14 à
+128 caractères. Le hachage utilise Argon2id via `@node-rs/argon2` avec 64 MiB, 3 itérations et
+parallélisme 1.
+
+Après la première connexion par mot de passe, le TOTP est obligatoire. Un administrateur sans TOTP
+est redirigé vers `/setup-2fa` et ne peut pas accéder au dashboard ni à `/audit` tant que le second
+facteur n’est pas validé. Les trusted devices restent désactivés.
+
 ## Sécurité et erreurs
 
 Le socle applique actuellement :
 
 - suppression de l’en-tête `X-Powered-By` ;
+- sessions serveur persistantes et révocables dans PostgreSQL ;
+- limitation des tentatives via Redis ;
+- cookies HttpOnly et SameSite Strict, avec exception `Secure=false` limitée à `APP_ENV=local` ;
 - `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy` et
   désactivation du DNS prefetch ;
 - réponses d’erreur publiques normalisées sans stack trace ;
@@ -217,9 +258,9 @@ Le socle applique actuellement :
 - logs JSON structurés avec redaction des champs sensibles ;
 - Server Components par défaut et frontière `server-only`.
 
-La CSP finale, HSTS au niveau du proxy HTTPS, l’authentification, les sessions, MFA, RBAC, CSRF,
-rate limiting et l’audit métier sont différés. Ils nécessitent des contrats et une infrastructure
-qui n’existent pas encore.
+La CSP finale, HSTS au niveau du proxy HTTPS, RBAC avancé, authentification sociale, reset email,
+MFA avancée et audit métier complet restent différés. Ils nécessitent des contrats et une
+infrastructure qui n’existent pas encore.
 
 ## Tests et build
 
@@ -253,14 +294,15 @@ local explicite. `main` n’est jamais utilisée pour le développement direct.
 
 Cette phase n’ajoute volontairement aucun :
 
-- compte administrateur, authentification, MFA ou rôle ;
 - utilisateur client ;
 - catalogue, module ou publication ;
 - commande, paiement ou droit d’accès ;
 - client vers la production ;
-- schéma, migration ou donnée métier ;
-- connexion applicative à PostgreSQL, Redis, stockage ou production.
+- donnée métier ;
+- stockage objet applicatif ou usage MinIO par défaut ;
+- connexion applicative à la production.
 
-Consulter `docs/architecture.md` pour les décisions internes et `CHANGELOG.local.md` pour
+Consulter `docs/architecture.md` pour les décisions internes, `docs/authentication.md` pour
+l’identité locale, `docs/database.md` pour PostgreSQL/Drizzle et `CHANGELOG.local.md` pour
 l’historique local. Les opérations Docker sont décrites dans `docs/docker-local.md`. Le suivi des
 avis de dépendances non résolus se trouve dans `docs/security-debt.md`.
