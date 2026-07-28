@@ -32,27 +32,26 @@ export function TotpVerifyForm() {
   }
 
   return (
-    <form className="grid gap-5" onSubmit={handleSubmit}>
-      <label className="text-sm font-medium text-slate-200" htmlFor="code">
+    <form className="grid gap-4" onSubmit={handleSubmit}>
+      <label className="text-sm font-medium text-[var(--text-primary)]" htmlFor="code">
         Code TOTP ou code de secours
       </label>
       <input
         autoComplete="one-time-code"
-        className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-3 text-slate-100 outline-none transition focus:border-cyan-300"
+        className="px-3 py-2 text-sm"
         id="code"
         name="code"
         required
       />
       {error ? (
-        <p aria-live="polite" className="text-sm text-rose-300">
+        <p
+          aria-live="polite"
+          className="border border-[var(--danger)] bg-[#fff0f0] px-3 py-2 text-sm text-[var(--danger)]"
+        >
           {error}
         </p>
       ) : null}
-      <button
-        className="rounded-lg bg-cyan-300 px-4 py-3 font-semibold text-slate-950"
-        disabled={pending}
-        type="submit"
-      >
+      <button className="classic-button px-4 py-2 font-semibold" disabled={pending} type="submit">
         Verifier
       </button>
     </form>

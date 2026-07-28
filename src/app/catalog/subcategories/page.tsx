@@ -37,9 +37,9 @@ export default async function SubcategoriesPage({
           title="Sous-catégories"
         />
         <CatalogFilterForm defaultSearch={filters.search} defaultStatus={filters.status} />
-        <div className="overflow-hidden rounded-2xl border border-slate-800">
+        <div className="classic-panel overflow-x-auto">
           <table className="w-full min-w-[52rem] text-left text-sm">
-            <thead className="bg-slate-900 text-slate-300">
+            <thead>
               <tr>
                 <th className="px-4 py-3">Nom</th>
                 <th className="px-4 py-3">Catégorie</th>
@@ -48,18 +48,22 @@ export default async function SubcategoriesPage({
                 <th className="px-4 py-3">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800">
+            <tbody>
               {page.items.map((subcategory) => (
-                <tr className="bg-slate-950/60" key={subcategory.id}>
-                  <td className="px-4 py-3 font-medium text-white">{subcategory.name}</td>
-                  <td className="px-4 py-3 text-slate-300">{subcategory.categoryName}</td>
-                  <td className="px-4 py-3 text-slate-300">{subcategory.slug}</td>
+                <tr key={subcategory.id}>
+                  <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
+                    {subcategory.name}
+                  </td>
+                  <td className="px-4 py-3 text-[var(--text-secondary)]">
+                    {subcategory.categoryName}
+                  </td>
+                  <td className="px-4 py-3 text-[var(--text-secondary)]">{subcategory.slug}</td>
                   <td className="px-4 py-3">
                     <CatalogBadge archivedAt={subcategory.archivedAt} />
                   </td>
                   <td className="px-4 py-3">
                     <Link
-                      className="text-cyan-200 hover:text-cyan-100"
+                      className="classic-action inline-flex px-2 py-1 text-xs"
                       href={`/catalog/subcategories/${subcategory.id}`}
                     >
                       Ouvrir
@@ -69,7 +73,7 @@ export default async function SubcategoriesPage({
               ))}
               {page.items.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-6 text-slate-400" colSpan={5}>
+                  <td className="px-4 py-6 text-[var(--text-secondary)]" colSpan={5}>
                     Aucune sous-catégorie.
                   </td>
                 </tr>

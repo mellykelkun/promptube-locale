@@ -48,14 +48,14 @@ export function LoginForm() {
   }
 
   return (
-    <form className="grid gap-5" onSubmit={handleSubmit}>
+    <form className="grid gap-4" onSubmit={handleSubmit}>
       <div className="grid gap-2">
-        <label className="text-sm font-medium text-slate-200" htmlFor="email">
+        <label className="text-sm font-medium text-[var(--text-primary)]" htmlFor="email">
           Email administrateur
         </label>
         <input
           autoComplete="email"
-          className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-3 text-slate-100 outline-none transition focus:border-cyan-300"
+          className="px-3 py-2 text-sm"
           id="email"
           name="email"
           required
@@ -63,12 +63,12 @@ export function LoginForm() {
         />
       </div>
       <div className="grid gap-2">
-        <label className="text-sm font-medium text-slate-200" htmlFor="password">
+        <label className="text-sm font-medium text-[var(--text-primary)]" htmlFor="password">
           Mot de passe
         </label>
         <input
           autoComplete="current-password"
-          className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-3 text-slate-100 outline-none transition focus:border-cyan-300"
+          className="px-3 py-2 text-sm"
           id="password"
           maxLength={128}
           minLength={14}
@@ -78,12 +78,15 @@ export function LoginForm() {
         />
       </div>
       {error ? (
-        <p aria-live="polite" className="text-sm text-rose-300">
+        <p
+          aria-live="polite"
+          className="border border-[var(--danger)] bg-[#fff0f0] px-3 py-2 text-sm text-[var(--danger)]"
+        >
           {error}
         </p>
       ) : null}
       <button
-        className="rounded-lg bg-cyan-300 px-4 py-3 font-semibold text-slate-950 transition hover:bg-cyan-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
+        className="classic-button px-4 py-2 font-semibold disabled:cursor-not-allowed disabled:opacity-60"
         disabled={pending}
         type="submit"
       >

@@ -49,9 +49,9 @@ export default async function ModulesPage({
           showWorkflow
           workflowStatus={workflowStatus}
         />
-        <div className="overflow-hidden rounded-2xl border border-slate-800">
+        <div className="classic-panel overflow-x-auto">
           <table className="w-full min-w-[60rem] text-left text-sm">
-            <thead className="bg-slate-900 text-slate-300">
+            <thead>
               <tr>
                 <th className="px-4 py-3">Titre</th>
                 <th className="px-4 py-3">Sous-catégorie</th>
@@ -60,23 +60,23 @@ export default async function ModulesPage({
                 <th className="px-4 py-3">Action</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800">
+            <tbody>
               {page.items.map((module) => (
-                <tr className="bg-slate-950/60" key={module.id}>
+                <tr key={module.id}>
                   <td className="px-4 py-3">
-                    <p className="font-medium text-white">{module.title}</p>
-                    <p className="mt-1 text-xs text-slate-400">{module.slug}</p>
+                    <p className="font-medium text-[var(--text-primary)]">{module.title}</p>
+                    <p className="mt-1 text-xs text-[var(--text-secondary)]">{module.slug}</p>
                   </td>
-                  <td className="px-4 py-3 text-slate-300">
+                  <td className="px-4 py-3 text-[var(--text-secondary)]">
                     {module.categoryName} / {module.subcategoryName}
                   </td>
-                  <td className="px-4 py-3 text-slate-300">{module.locale}</td>
+                  <td className="px-4 py-3 text-[var(--text-secondary)]">{module.locale}</td>
                   <td className="px-4 py-3">
                     <CatalogBadge archivedAt={module.archivedAt} status={module.latestStatus} />
                   </td>
                   <td className="px-4 py-3">
                     <Link
-                      className="text-cyan-200 hover:text-cyan-100"
+                      className="classic-action inline-flex px-2 py-1 text-xs"
                       href={`/catalog/modules/${module.id}`}
                     >
                       Ouvrir
@@ -86,7 +86,7 @@ export default async function ModulesPage({
               ))}
               {page.items.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-6 text-slate-400" colSpan={5}>
+                  <td className="px-4 py-6 text-[var(--text-secondary)]" colSpan={5}>
                     Aucun module.
                   </td>
                 </tr>
