@@ -90,9 +90,13 @@ run_with_safe_fallbacks() {
   export ADMIN_HTTP_PORT=8080
   export APP_ENV=local
   export APP_VERSION=0.1.0
+  export BETTER_AUTH_BASE_URL=http://127.0.0.1:8080
   export NEXT_PUBLIC_APP_NAME="Promptube Admin"
   export POSTGRES_DB=promptube_admin
   export POSTGRES_USER=promptube_admin
+  export POSTGRES_APP_USER=promptube_admin_app
+  export POSTGRES_MIGRATION_USER=promptube_admin_migration
+  export TRUSTED_ORIGINS=http://127.0.0.1:8080
   export MINIO_ROOT_USER=promptube_admin_storage
 
   exec docker compose \

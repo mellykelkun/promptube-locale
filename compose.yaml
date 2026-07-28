@@ -37,12 +37,28 @@ services:
     environment:
       APP_ENV: ${APP_ENV:?APP_ENV is required}
       APP_VERSION: ${APP_VERSION:?APP_VERSION is required}
+      BETTER_AUTH_BASE_URL: ${BETTER_AUTH_BASE_URL:?BETTER_AUTH_BASE_URL is required}
+      BETTER_AUTH_SECRET_FILE: /run/secrets/admin-promptube-better-auth-secret
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:?NEXT_PUBLIC_APP_NAME is required}
       NODE_ENV: production
+      POSTGRES_APP_PASSWORD_FILE: /run/secrets/admin-promptube-postgres-app-password
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_HOST: admin-promptube-postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_APP_USER:?POSTGRES_APP_USER is required}
+      REDIS_HOST: admin-promptube-redis
+      REDIS_PASSWORD_FILE: /run/secrets/admin-promptube-redis-password
+      REDIS_PORT: 6379
+      TRUSTED_ORIGINS: ${TRUSTED_ORIGINS:?TRUSTED_ORIGINS is required}
     expose:
       - "3000"
     networks:
       - frontend
+      - backend
+    secrets:
+      - admin-promptube-postgres-app-password
+      - admin-promptube-redis-password
+      - admin-promptube-better-auth-secret
     restart: unless-stopped
     read_only: true
     tmpfs:
@@ -52,7 +68,7 @@ services:
     security_opt:
       - no-new-privileges:true
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:3000/api/health"]
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:3000/api/health/live"]
       interval: 10s
       timeout: 5s
       retries: 6
@@ -137,6 +153,8 @@ services:
       start_period: 10s
 
   admin-promptube-object-storage:
+    profiles:
+      - storage
     image: admin-promptube-object-storage:RELEASE.2025-10-15T17-29-55Z
     build:
       context: ./docker/object-storage
@@ -169,6 +187,85 @@ services:
       retries: 10
       start_period: 20s
 
+  admin-promptube-db-provision:
+    image: admin-promptube-tools:0.1.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: tools
+    command: ["node", "scripts/db/provision.mjs"]
+    profiles:
+      - tools
+    environment:
+      POSTGRES_APP_PASSWORD_FILE: /run/secrets/admin-promptube-postgres-app-password
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER:?POSTGRES_APP_USER is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_HOST: admin-promptube-postgres
+      POSTGRES_MIGRATION_PASSWORD_FILE: /run/secrets/admin-promptube-postgres-migration-password
+      POSTGRES_MIGRATION_USER: ${POSTGRES_MIGRATION_USER:?POSTGRES_MIGRATION_USER is required}
+      POSTGRES_PORT: 5432
+      POSTGRES_BOOTSTRAP_PASSWORD_FILE: /run/secrets/admin-promptube-postgres-password
+      POSTGRES_BOOTSTRAP_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+    networks:
+      - backend
+    secrets:
+      - admin-promptube-postgres-password
+      - admin-promptube-postgres-app-password
+      - admin-promptube-postgres-migration-password
+    depends_on:
+      admin-promptube-postgres:
+        condition: service_healthy
+    restart: "no"
+
+  admin-promptube-db-migrate:
+    image: admin-promptube-tools:0.1.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: tools
+    command: ["node", "scripts/db/migrate.mjs"]
+    profiles:
+      - tools
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_HOST: admin-promptube-postgres
+      POSTGRES_MIGRATION_PASSWORD_FILE: /run/secrets/admin-promptube-postgres-migration-password
+      POSTGRES_MIGRATION_USER: ${POSTGRES_MIGRATION_USER:?POSTGRES_MIGRATION_USER is required}
+      POSTGRES_PORT: 5432
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER:?POSTGRES_APP_USER is required}
+    networks:
+      - backend
+    secrets:
+      - admin-promptube-postgres-migration-password
+    depends_on:
+      admin-promptube-postgres:
+        condition: service_healthy
+    restart: "no"
+
+  admin-promptube-admin-bootstrap:
+    image: admin-promptube-tools:0.1.0
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: tools
+    command: ["node", "scripts/db/bootstrap-admin.mjs"]
+    profiles:
+      - tools
+    environment:
+      POSTGRES_APP_PASSWORD_FILE: /run/secrets/admin-promptube-postgres-app-password
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_HOST: admin-promptube-postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_APP_USER:?POSTGRES_APP_USER is required}
+    networks:
+      - backend
+    secrets:
+      - admin-promptube-postgres-app-password
+    depends_on:
+      admin-promptube-postgres:
+        condition: service_healthy
+    restart: "no"
+
 networks:
   frontend:
     driver: bridge
@@ -184,7 +281,13 @@ volumes:
 secrets:
   admin-promptube-postgres-password:
     file: ./secrets/postgres-password
+  admin-promptube-postgres-app-password:
+    file: ./secrets/postgres-app-password
+  admin-promptube-postgres-migration-password:
+    file: ./secrets/postgres-migration-password
   admin-promptube-redis-password:
     file: ./secrets/redis-password
+  admin-promptube-better-auth-secret:
+    file: ./secrets/better-auth-secret
   admin-promptube-object-storage-password:
     file: ./secrets/object-storage-password

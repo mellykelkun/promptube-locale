@@ -1,9 +1,12 @@
 # Secrets Docker locaux
 
-Ce dossier reçoit uniquement les trois fichiers secrets locaux suivants :
+Ce dossier reçoit uniquement les fichiers secrets locaux suivants :
 
 - `postgres-password` ;
+- `postgres-app-password` ;
+- `postgres-migration-password` ;
 - `redis-password` ;
+- `better-auth-secret` ;
 - `object-storage-password`.
 
 Ils sont créés avec `npm run docker:secrets:init`, restent ignorés par Git et doivent conserver des
@@ -18,6 +21,10 @@ dans un fichier temporaire du même dossier, valide ce temporaire, puis le renom
 secret existant n’est jamais régénéré. Sa permission peut être normalisée à `600` seulement après
 avoir établi qu’il s’agit d’un fichier régulier non vide, non symbolique et résolu exactement dans
 ce dossier.
+
+`postgres-password` sert uniquement au bootstrap PostgreSQL. `postgres-migration-password` sert aux
+migrations Drizzle et `postgres-app-password` au runtime Next.js. Le secret bootstrap n’est jamais
+monté dans le conteneur applicatif.
 
 Le démarrage refuse un secret manquant, vide, spécial, symbolique, extérieur au dossier ou dont le
 mode diffère de `600`. Les montages Compose sont ensuite contrôlés dans chaque conteneur ; les

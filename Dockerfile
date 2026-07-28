@@ -11,6 +11,30 @@ FROM base AS dependencies
 COPY package.json package-lock.json ./
 RUN npm ci
 
+FROM base AS production_dependencies
+
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && \
+    rm -rf \
+    node_modules/@esbuild* \
+    node_modules/@esbuild-kit \
+    node_modules/@vitejs \
+    node_modules/@vitest \
+    node_modules/drizzle-kit \
+    node_modules/esbuild \
+    node_modules/tsx \
+    node_modules/vite \
+    node_modules/vitest \
+    /usr/local/lib/node_modules/corepack \
+    /usr/local/lib/node_modules/npm \
+    /usr/local/bin/corepack \
+    /usr/local/bin/npm \
+    /usr/local/bin/npx \
+    /usr/local/bin/pnpm \
+    /usr/local/bin/pnpx \
+    /usr/local/bin/yarn \
+    /usr/local/bin/yarnpkg
+
 FROM base AS builder
 
 ARG NEXT_PUBLIC_APP_NAME="Promptube Admin"
@@ -19,6 +43,12 @@ ENV NEXT_PUBLIC_APP_NAME=$NEXT_PUBLIC_APP_NAME
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
+
+FROM production_dependencies AS tools
+
+ENV NODE_ENV=development
+
+COPY . .
 
 FROM base AS runner
 
@@ -46,6 +76,6 @@ USER node
 EXPOSE 3000
 
 HEALTHCHECK --interval=10s --timeout=5s --start-period=20s --retries=6 \
-  CMD wget --quiet --spider http://127.0.0.1:3000/api/health || exit 1
+  CMD wget --quiet --spider http://127.0.0.1:3000/api/health/live || exit 1
 
 CMD ["node", "server.js"]

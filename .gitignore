@@ -39,6 +39,9 @@ yarn-error.log*
 /.tmp-tests/
 /.tmp-scan/
 /.tmp-docker-verify.*
+/backups/
+/.tmp-db-tests/
+/.tmp-integration-tests/
 
 # env files (can opt-in for committing if needed)
 .env*
