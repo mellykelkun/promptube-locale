@@ -14,44 +14,47 @@ type AdminShellProps = Readonly<{
 
 export function AdminShell({ admin, children, currentPath = "/" }: AdminShellProps) {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 lg:grid lg:grid-cols-[18rem_1fr]">
-      <aside className="border-b border-slate-800 bg-slate-950 px-4 py-5 lg:min-h-screen lg:border-r lg:border-b-0 lg:px-5 lg:py-7">
-        <div className="mb-7 flex items-center gap-3 px-2">
+    <div className="classic-admin min-h-screen lg:grid lg:grid-cols-[17rem_1fr]">
+      <aside className="classic-window m-2 border-b px-3 py-3 lg:m-3 lg:min-h-[calc(100vh-1.5rem)] lg:border-b lg:px-3 lg:py-3">
+        <div className="classic-titlebar mb-3 flex items-center gap-2 px-2 py-1.5">
           <div
             aria-hidden="true"
-            className="grid size-10 shrink-0 place-items-center rounded-xl bg-cyan-300 font-black text-slate-950 shadow-[0_0_2rem_rgba(103,232,249,0.2)]"
+            className="grid size-7 shrink-0 place-items-center border border-white/60 bg-[var(--accent-beige)] font-black text-[var(--accent-blue)]"
           >
             P
           </div>
-          <div>
-            <p className="font-semibold tracking-tight text-white">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold tracking-tight text-white">
               {publicEnvironment.applicationName}
             </p>
-            <p className="text-xs text-slate-400">Administration locale</p>
+            <p className="text-[0.7rem] text-blue-50">Administration locale</p>
           </div>
         </div>
+        <div className="classic-toolbar mb-3 px-2 py-1 text-xs">Console locale · MMC Promptube</div>
         <AdminNavigation currentPath={currentPath} />
       </aside>
 
-      <div className="min-w-0">
-        <header className="flex min-h-20 items-center justify-between gap-4 border-b border-slate-800 bg-slate-950/80 px-5 py-4 sm:px-8">
+      <div className="min-w-0 px-2 pb-4 lg:py-3 lg:pr-3 lg:pl-0">
+        <header className="classic-window mb-3 flex min-h-16 items-center justify-between gap-4 px-4 py-3">
           <div>
-            <p className="text-sm font-medium text-slate-400">Environnement local</p>
-            <p className="text-sm text-slate-200">
+            <p className="text-xs font-semibold tracking-wide text-[var(--text-secondary)] uppercase">
+              Environnement local
+            </p>
+            <p className="mt-1 text-sm text-[var(--text-primary)]">
               {admin ? `${admin.name} · ${admin.email}` : "Fondation technique"}
             </p>
           </div>
           <div className="flex items-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-200">
-              <span aria-hidden="true" className="size-2 rounded-full bg-emerald-300" />
+            <span className="inline-flex items-center gap-2 border border-[var(--border-medium)] bg-[#e9f2e3] px-3 py-1.5 text-xs font-semibold text-[var(--success)]">
+              <span
+                aria-hidden="true"
+                className="size-2 border border-[var(--success)] bg-[var(--success)]"
+              />
               Socle actif
             </span>
             {admin ? (
               <form action="/api/admin/auth/logout" method="post">
-                <button
-                  className="rounded-lg border border-slate-700 px-3 py-2 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300"
-                  type="submit"
-                >
+                <button className="classic-button px-3 py-2 text-sm font-medium" type="submit">
                   Deconnexion
                 </button>
               </form>
@@ -59,7 +62,7 @@ export function AdminShell({ admin, children, currentPath = "/" }: AdminShellPro
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-7xl px-5 py-8 sm:px-8 lg:py-10">{children}</main>
+        <main className="mx-auto w-full max-w-7xl">{children}</main>
       </div>
     </div>
   );

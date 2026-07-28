@@ -18,17 +18,15 @@ type ModuleFieldsProps = Readonly<{
   subcategories: CatalogSubcategoryDto[];
 }>;
 
-const inputClass =
-  "rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100 outline-none focus:border-cyan-300";
-const textareaClass =
-  "min-h-28 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100 outline-none focus:border-cyan-300";
+const inputClass = "px-3 py-2 text-sm";
+const textareaClass = "min-h-28 px-3 py-2 text-sm";
 
 export function CategoryFields({ category }: CategoryFieldsProps) {
   return (
     <>
       {category ? <input name="id" type="hidden" value={category.id} /> : null}
       {category ? <input name="expectedRevision" type="hidden" value={category.revision} /> : null}
-      <label className="grid gap-2 text-sm text-slate-200">
+      <label className="grid gap-2 text-sm text-[var(--text-primary)]">
         Nom
         <input
           className={inputClass}
@@ -39,7 +37,7 @@ export function CategoryFields({ category }: CategoryFieldsProps) {
           required
         />
       </label>
-      <label className="grid gap-2 text-sm text-slate-200">
+      <label className="grid gap-2 text-sm text-[var(--text-primary)]">
         Slug
         <input
           className={inputClass}
@@ -51,7 +49,7 @@ export function CategoryFields({ category }: CategoryFieldsProps) {
           placeholder="generé depuis le nom si vide"
         />
       </label>
-      <label className="grid gap-2 text-sm text-slate-200">
+      <label className="grid gap-2 text-sm text-[var(--text-primary)]">
         Ordre
         <input
           className={inputClass}
@@ -63,7 +61,7 @@ export function CategoryFields({ category }: CategoryFieldsProps) {
           type="number"
         />
       </label>
-      <label className="grid gap-2 text-sm text-slate-200 md:col-span-2">
+      <label className="grid gap-2 text-sm text-[var(--text-primary)] md:col-span-2">
         Description
         <textarea
           className={textareaClass}
@@ -83,7 +81,7 @@ export function SubcategoryFields({ categories, subcategory }: SubcategoryFields
       {subcategory ? (
         <input name="expectedRevision" type="hidden" value={subcategory.revision} />
       ) : null}
-      <label className="grid gap-2 text-sm text-slate-200 md:col-span-2">
+      <label className="grid gap-2 text-sm text-[var(--text-primary)] md:col-span-2">
         Catégorie parente
         <select
           className={inputClass}
@@ -109,7 +107,7 @@ export function ModuleFields({ module, subcategories }: ModuleFieldsProps) {
     <>
       {module ? <input name="id" type="hidden" value={module.id} /> : null}
       {module ? <input name="expectedRevision" type="hidden" value={module.revision} /> : null}
-      <label className="grid gap-2 text-sm text-slate-200 md:col-span-2">
+      <label className="grid gap-2 text-sm text-[var(--text-primary)] md:col-span-2">
         Sous-catégorie
         <select
           className={inputClass}
@@ -125,7 +123,7 @@ export function ModuleFields({ module, subcategories }: ModuleFieldsProps) {
           ))}
         </select>
       </label>
-      <label className="grid gap-2 text-sm text-slate-200">
+      <label className="grid gap-2 text-sm text-[var(--text-primary)]">
         Titre
         <input
           className={inputClass}
@@ -136,7 +134,7 @@ export function ModuleFields({ module, subcategories }: ModuleFieldsProps) {
           required
         />
       </label>
-      <label className="grid gap-2 text-sm text-slate-200">
+      <label className="grid gap-2 text-sm text-[var(--text-primary)]">
         Slug
         <input
           className={inputClass}
@@ -147,7 +145,7 @@ export function ModuleFields({ module, subcategories }: ModuleFieldsProps) {
           pattern="[a-z0-9]+(-[a-z0-9]+)*"
         />
       </label>
-      <label className="grid gap-2 text-sm text-slate-200">
+      <label className="grid gap-2 text-sm text-[var(--text-primary)]">
         Locale
         <input
           className={inputClass}
@@ -158,7 +156,7 @@ export function ModuleFields({ module, subcategories }: ModuleFieldsProps) {
           required
         />
       </label>
-      <label className="grid gap-2 text-sm text-slate-200 md:col-span-2">
+      <label className="grid gap-2 text-sm text-[var(--text-primary)] md:col-span-2">
         Résumé
         <textarea
           className={textareaClass}
@@ -169,10 +167,10 @@ export function ModuleFields({ module, subcategories }: ModuleFieldsProps) {
         />
       </label>
       {!module ? (
-        <label className="grid gap-2 text-sm text-slate-200 md:col-span-2">
+        <label className="grid gap-2 text-sm text-[var(--text-primary)] md:col-span-2">
           Contenu Markdown initial
           <textarea
-            className="min-h-44 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 font-mono text-sm text-slate-100 outline-none focus:border-cyan-300"
+            className="min-h-44 px-3 py-2 font-mono text-sm"
             defaultValue="Brouillon initial."
             maxLength={50000}
             name="contentMarkdown"

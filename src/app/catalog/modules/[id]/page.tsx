@@ -49,31 +49,27 @@ export default async function ModuleDetailPage({
         />
         <div className="flex items-center gap-3">
           <CatalogBadge archivedAt={module.archivedAt} status={module.latestStatus} />
-          <span className="text-sm text-slate-400">Révision module {module.revision}</span>
+          <span className="text-sm text-[var(--text-secondary)]">
+            Révision module {module.revision}
+          </span>
         </div>
         <CatalogStatusMessage
           error={paramValue(query, "error")}
           status={paramValue(query, "status")}
         />
-        <form
-          action={updateModuleAction}
-          className="grid gap-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 md:grid-cols-2"
-        >
+        <form action={updateModuleAction} className="classic-panel grid gap-4 p-5 md:grid-cols-2">
           <ModuleFields module={module} subcategories={subcategories.items} />
-          <button
-            className="rounded-lg bg-cyan-300 px-4 py-3 font-semibold text-slate-950 hover:bg-cyan-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 md:col-span-2"
-            type="submit"
-          >
+          <button className="classic-button px-4 py-3 font-semibold md:col-span-2" type="submit">
             Enregistrer le module
           </button>
         </form>
         <section className="space-y-4" aria-labelledby="versions-title">
-          <h2 className="text-xl font-semibold text-white" id="versions-title">
+          <h2 className="text-xl font-semibold text-[var(--text-primary)]" id="versions-title">
             Versions
           </h2>
-          <div className="overflow-hidden rounded-2xl border border-slate-800">
+          <div className="classic-panel overflow-x-auto">
             <table className="w-full min-w-[48rem] text-left text-sm">
-              <thead className="bg-slate-900 text-slate-300">
+              <thead>
                 <tr>
                   <th className="px-4 py-3">Version</th>
                   <th className="px-4 py-3">Statut</th>
@@ -81,17 +77,21 @@ export default async function ModuleDetailPage({
                   <th className="px-4 py-3">Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800">
+              <tbody>
                 {versions.map((version) => (
-                  <tr className="bg-slate-950/60" key={version.id}>
-                    <td className="px-4 py-3 font-medium text-white">v{version.versionNumber}</td>
+                  <tr key={version.id}>
+                    <td className="px-4 py-3 font-medium text-[var(--text-primary)]">
+                      v{version.versionNumber}
+                    </td>
                     <td className="px-4 py-3">
                       <CatalogBadge status={version.workflowStatus} />
                     </td>
-                    <td className="px-4 py-3 text-slate-300">{version.updatedAt.toISOString()}</td>
+                    <td className="px-4 py-3 text-[var(--text-secondary)]">
+                      {version.updatedAt.toISOString()}
+                    </td>
                     <td className="px-4 py-3">
                       <Link
-                        className="text-cyan-200 hover:text-cyan-100"
+                        className="classic-action inline-flex px-2 py-1 text-xs"
                         href={`/catalog/modules/${module.id}/versions/${version.id}`}
                       >
                         Ouvrir
@@ -105,14 +105,11 @@ export default async function ModuleDetailPage({
         </section>
         <form
           action={module.archivedAt ? restoreModuleAction : archiveModuleAction}
-          className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5"
+          className="classic-panel p-5"
         >
           <input name="id" type="hidden" value={module.id} />
           <input name="expectedRevision" type="hidden" value={module.revision} />
-          <button
-            className="rounded-lg border border-amber-300/50 px-4 py-3 text-sm font-semibold text-amber-100 hover:bg-amber-300/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-200"
-            type="submit"
-          >
+          <button className="classic-button px-4 py-3 text-sm font-semibold" type="submit">
             {module.archivedAt ? "Restaurer le module" : "Archiver le module"}
           </button>
         </form>

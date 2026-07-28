@@ -62,7 +62,7 @@ export function TotpSetupForm() {
     <div className="grid gap-6">
       {setup.status === "ready" ? (
         <>
-          <div className="rounded-lg border border-slate-800 bg-white p-4">
+          <div className="classic-panel inline-flex bg-white p-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               alt="QR code TOTP Promptube Admin"
@@ -72,15 +72,15 @@ export function TotpSetupForm() {
               width={192}
             />
           </div>
-          <p className="break-all text-xs text-slate-400">{setup.totpURI}</p>
+          <p className="break-all text-xs text-[var(--text-secondary)]">{setup.totpURI}</p>
           <section
             aria-labelledby="backup-codes-title"
-            className="rounded-lg border border-amber-300/30 bg-amber-300/10 p-4"
+            className="border border-[var(--warning)] bg-[#fff4c2] p-4"
           >
-            <h2 className="font-semibold text-amber-100" id="backup-codes-title">
+            <h2 className="font-semibold text-[var(--warning)]" id="backup-codes-title">
               Codes de secours a sauvegarder maintenant
             </h2>
-            <ul className="mt-3 grid gap-2 text-sm text-amber-50">
+            <ul className="mt-3 grid gap-2 text-sm text-[var(--text-primary)]">
               {setup.backupCodes.map((code) => (
                 <li className="font-mono" key={code}>
                   {code}
@@ -89,19 +89,19 @@ export function TotpSetupForm() {
             </ul>
           </section>
           <form className="grid gap-4" onSubmit={verifyCode}>
-            <label className="text-sm font-medium text-slate-200" htmlFor="code">
+            <label className="text-sm font-medium text-[var(--text-primary)]" htmlFor="code">
               Code TOTP
             </label>
             <input
               autoComplete="one-time-code"
-              className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-3 text-slate-100 outline-none transition focus:border-cyan-300"
+              className="px-3 py-2 text-sm"
               id="code"
               inputMode="numeric"
               name="code"
               required
             />
             <button
-              className="rounded-lg bg-cyan-300 px-4 py-3 font-semibold text-slate-950"
+              className="classic-button px-4 py-2 font-semibold"
               disabled={pending}
               type="submit"
             >
@@ -111,19 +111,19 @@ export function TotpSetupForm() {
         </>
       ) : (
         <form className="grid gap-4" onSubmit={startSetup}>
-          <label className="text-sm font-medium text-slate-200" htmlFor="password">
+          <label className="text-sm font-medium text-[var(--text-primary)]" htmlFor="password">
             Mot de passe courant
           </label>
           <input
             autoComplete="current-password"
-            className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-3 text-slate-100 outline-none transition focus:border-cyan-300"
+            className="px-3 py-2 text-sm"
             id="password"
             name="password"
             required
             type="password"
           />
           <button
-            className="rounded-lg bg-cyan-300 px-4 py-3 font-semibold text-slate-950"
+            className="classic-button px-4 py-2 font-semibold"
             disabled={pending}
             type="submit"
           >
@@ -132,7 +132,10 @@ export function TotpSetupForm() {
         </form>
       )}
       {setup.status === "error" ? (
-        <p aria-live="polite" className="text-sm text-rose-300">
+        <p
+          aria-live="polite"
+          className="border border-[var(--danger)] bg-[#fff0f0] px-3 py-2 text-sm text-[var(--danger)]"
+        >
           {setup.error}
         </p>
       ) : null}

@@ -30,13 +30,10 @@ export default async function NewSubcategoryPage({
         <CatalogStatusMessage error={paramValue(params, "error")} />
         <form
           action={createSubcategoryAction}
-          className="grid gap-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 md:grid-cols-2"
+          className="classic-panel grid gap-4 p-5 md:grid-cols-2"
         >
           <SubcategoryFields categories={categories.items} />
-          <button
-            className="rounded-lg bg-cyan-300 px-4 py-3 font-semibold text-slate-950 hover:bg-cyan-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300 md:col-span-2"
-            type="submit"
-          >
+          <button className="classic-button px-4 py-3 font-semibold md:col-span-2" type="submit">
             Créer la sous-catégorie
           </button>
         </form>

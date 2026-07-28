@@ -18,7 +18,7 @@ function isCurrentNavigationItem(href: string, currentPath: string) {
 export function AdminNavigation({ currentPath = "/" }: AdminNavigationProps) {
   return (
     <nav aria-label="Navigation principale">
-      <p className="mb-3 px-3 text-xs font-semibold tracking-[0.16em] text-slate-400 uppercase">
+      <p className="mb-2 border-b border-[var(--border-medium)] px-2 pb-1 text-xs font-semibold tracking-[0.12em] text-[var(--text-secondary)] uppercase">
         Navigation
       </p>
       <ul className="grid grid-cols-2 gap-1 sm:grid-cols-3 lg:grid-cols-1">
@@ -32,29 +32,38 @@ export function AdminNavigation({ currentPath = "/" }: AdminNavigationProps) {
                 <Link
                   aria-current={isCurrent ? "page" : undefined}
                   className={joinClassNames(
-                    "flex min-h-11 items-center justify-between rounded-lg border px-3 py-2 text-sm font-medium",
+                    "flex min-h-9 items-center justify-between border px-2.5 py-2 text-sm font-medium",
                     isCurrent
-                      ? "border-cyan-400/40 bg-cyan-400/15 text-cyan-100"
-                      : "border-slate-800 bg-slate-900/60 text-slate-300",
-                    "transition-colors hover:bg-cyan-400/15 focus-visible:outline-2",
-                    "focus-visible:outline-offset-2 focus-visible:outline-cyan-300",
+                      ? "border-[var(--accent-blue)] bg-[var(--accent-blue)] text-white"
+                      : "border-[var(--border-medium)] bg-[var(--panel-background)] text-[var(--text-primary)]",
+                    "hover:bg-[#e7effb] focus-visible:outline-2 focus-visible:outline-offset-2",
                   )}
                   href={item.href}
                 >
-                  <span>{item.label}</span>
+                  <span className="inline-flex items-center gap-2">
+                    <span aria-hidden="true" className="text-[0.65rem]">
+                      ▣
+                    </span>
+                    {item.label}
+                  </span>
                   {isCurrent ? (
-                    <span aria-hidden="true" className="text-cyan-300">
-                      ●
+                    <span aria-hidden="true" className="text-white">
+                      ▶
                     </span>
                   ) : null}
                 </Link>
               ) : (
                 <span
                   aria-disabled="true"
-                  className="flex min-h-11 items-center justify-between rounded-lg border border-transparent px-3 py-2 text-sm text-slate-400"
+                  className="flex min-h-9 items-center justify-between border border-transparent bg-[#ddd9cf] px-2.5 py-2 text-sm text-[var(--text-secondary)]"
                 >
-                  <span>{item.label}</span>
-                  <span className="text-[0.625rem] font-semibold tracking-wide text-slate-500 uppercase">
+                  <span className="inline-flex items-center gap-2">
+                    <span aria-hidden="true" className="text-[0.65rem]">
+                      □
+                    </span>
+                    {item.label}
+                  </span>
+                  <span className="text-[0.625rem] font-semibold tracking-wide uppercase">
                     Bientôt
                   </span>
                 </span>

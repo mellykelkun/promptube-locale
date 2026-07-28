@@ -12,11 +12,11 @@ export function CatalogFilterForm({
   workflowStatus = "",
 }: CatalogFilterFormProps) {
   return (
-    <form className="grid gap-3 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 md:grid-cols-[1fr_auto_auto_auto]">
-      <label className="grid gap-2 text-sm text-slate-200">
+    <form className="classic-panel grid gap-3 p-4 md:grid-cols-[1fr_auto_auto_auto]">
+      <label className="grid gap-2 text-sm text-[var(--text-primary)]">
         Recherche
         <input
-          className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300"
+          className="px-3 py-2 text-sm"
           defaultValue={defaultSearch}
           maxLength={120}
           name="search"
@@ -24,26 +24,18 @@ export function CatalogFilterForm({
           type="search"
         />
       </label>
-      <label className="grid gap-2 text-sm text-slate-200">
+      <label className="grid gap-2 text-sm text-[var(--text-primary)]">
         État
-        <select
-          className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300"
-          defaultValue={defaultStatus}
-          name="status"
-        >
+        <select className="px-3 py-2 text-sm" defaultValue={defaultStatus} name="status">
           <option value="active">Actifs</option>
           <option value="archived">Archivés</option>
           <option value="all">Tous</option>
         </select>
       </label>
       {showWorkflow ? (
-        <label className="grid gap-2 text-sm text-slate-200">
+        <label className="grid gap-2 text-sm text-[var(--text-primary)]">
           Workflow
-          <select
-            className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100 outline-none focus:border-cyan-300"
-            defaultValue={workflowStatus}
-            name="workflowStatus"
-          >
+          <select className="px-3 py-2 text-sm" defaultValue={workflowStatus} name="workflowStatus">
             <option value="">Tous</option>
             <option value="DRAFT">Brouillon</option>
             <option value="IN_REVIEW">En revue</option>
@@ -52,10 +44,7 @@ export function CatalogFilterForm({
           </select>
         </label>
       ) : null}
-      <button
-        className="self-end rounded-lg border border-cyan-300/40 px-4 py-2 text-sm font-semibold text-cyan-100 hover:bg-cyan-300/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-300"
-        type="submit"
-      >
+      <button className="classic-button self-end px-4 py-2 text-sm font-semibold" type="submit">
         Filtrer
       </button>
     </form>

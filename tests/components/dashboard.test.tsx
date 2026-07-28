@@ -25,5 +25,7 @@ describe("admin dashboard foundation", () => {
     );
     expect(screen.getByRole("link", { name: /Catalogue/ })).toHaveAttribute("href", "/catalog");
     expect(screen.getByText(/aucune donnée ni fonctionnalité métier/i)).toBeInTheDocument();
+    expect(screen.getByText("Promptube Admin — Tableau de bord")).toHaveClass("classic-titlebar");
+    expect(screen.getByText(/Console locale Promptube/i)).toHaveClass("classic-statusbar");
   });
 });
