@@ -5,8 +5,10 @@ Ce dossier reçoit uniquement les fichiers secrets locaux suivants :
 - `postgres-password` ;
 - `postgres-app-password` ;
 - `postgres-migration-password` ;
+- `postgres-backup-password` ;
 - `redis-password` ;
 - `better-auth-secret` ;
+- `backup-encryption-key` ;
 - `object-storage-password`.
 
 Ils sont créés avec `npm run docker:secrets:init`, restent ignorés par Git et doivent conserver des
@@ -23,8 +25,13 @@ avoir établi qu’il s’agit d’un fichier régulier non vide, non symbolique
 ce dossier.
 
 `postgres-password` sert uniquement au bootstrap PostgreSQL. `postgres-migration-password` sert aux
-migrations Drizzle et `postgres-app-password` au runtime Next.js. Le secret bootstrap n’est jamais
-monté dans le conteneur applicatif.
+migrations Drizzle, `postgres-app-password` au runtime Next.js et `postgres-backup-password` au rôle
+lecture seule utilisé par `pg_dump`. Le secret bootstrap et le secret backup ne sont jamais montés
+dans le conteneur applicatif.
+
+`backup-encryption-key` chiffre les sauvegardes PostgreSQL locales. Elle doit être sauvegardée
+séparément des archives : sans elle, les backups existants sont irrécupérables. Elle ne doit jamais
+être stockée dans `.local/backups`, copiée dans une image ou incluse dans un manifeste.
 
 Le démarrage refuse un secret manquant, vide, spécial, symbolique, extérieur au dossier ou dont le
 mode diffère de `600`. Les montages Compose sont ensuite contrôlés dans chaque conteneur ; les
@@ -35,7 +42,8 @@ Sauvegarder ces fichiers séparément des volumes, dans un support chiffré et �
 restauration doit préserver les noms exacts et le mode `600`, puis être validée avec
 `npm run docker:config` sans jamais imprimer le contenu.
 
-Les tests `npm run test:auth:all` n’utilisent pas ces secrets réels. Ils créent un dossier
-temporaire `.tmp-auth-test.*` dans le dépôt, y génèrent des secrets éphémères en mode `600`, les
-montent uniquement dans le projet Compose `promptube_admin_test`, puis suppriment ce dossier avec un
-`trap`. Ces secrets de test ne doivent jamais être copiés, journalisés ou versionnés.
+Les tests `npm run test:auth:all`, `npm run disaster-recovery:test` et
+`npm run secrets:rotation:test` n’utilisent pas ces secrets réels. Ils créent des dossiers
+temporaires dans le dépôt, y génèrent des secrets éphémères en mode `600`, les montent uniquement
+dans leurs projets Compose isolés, puis suppriment ces dossiers avec un `trap`. Ces secrets de test
+ne doivent jamais être copiés, journalisés ou versionnés.

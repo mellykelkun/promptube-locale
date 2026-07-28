@@ -17,6 +17,11 @@ isolé `promptube_admin_test`. Playwright et Chromium ne sont pas copiés dans l
 ; toute vulnérabilité éventuelle de cet outillage doit être évaluée comme dette de test, pas comme
 surface applicative exposée.
 
+Les workflows de sauvegarde/restauration utilisent uniquement `node:crypto`, `pg_dump`,
+`pg_restore`, Docker Compose et l’image PostgreSQL officielle déjà verrouillée. Ils n’ajoutent pas
+de dépendance runtime ou npm de chiffrement. Toute vulnérabilité critique exploitable dans ces
+outils bloque une restauration réelle jusqu’à réévaluation.
+
 ## Stockage objet local
 
 ### MinIO — GHSA-jjjj-jwhf-8rgr / CVE-2025-62506
@@ -131,7 +136,7 @@ nouveau scan est obligatoire avant toute exposition, mise à jour d’image ou p
 - **Référence vérifiée :**
   [GitHub Advisory Database](https://github.com/advisories/GHSA-f88m-g3jw-g9cj).
 
-### `postcss` 8.4.31 — GHSA-qx2v-qp2m-jg93, GHSA-6g55-p6wh-862q et GHSA-r28c-9q8g-f849
+### `postcss` 8.4.31 — GHSA-qx2v-qp2m-jg93, GHSA-6g55-p6wh-862q / CVE-2026-45623 et GHSA-r28c-9q8g-f849
 
 - **Introduction :** dépendance transitive de `next@16.2.12` (`next@16.2.12 → postcss@8.4.31`). Le
   `postcss@8.5.23` utilisé séparément par Tailwind et Vite n’est pas affecté par ces plages.
