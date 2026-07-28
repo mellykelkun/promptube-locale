@@ -9,6 +9,7 @@ describe("Next.js security configuration", () => {
       routes?.flatMap((route) => route.headers.map((header) => [header.key, header.value])) ?? [],
     );
 
+    expect(nextConfig.output).toBe("standalone");
     expect(nextConfig.poweredByHeader).toBe(false);
     expect(headers).toMatchObject({
       "Permissions-Policy": "camera=(), geolocation=(), microphone=()",
