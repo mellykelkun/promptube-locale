@@ -1,0 +1,306 @@
+name: promptube_admin_test
+
+services:
+  admin-test-postgres:
+    image: postgres:18.4-alpine3.23@sha256:996d0920e4ff9df1fc19dacb904492f3c1ec0ec1cc338f0ad7123be7731c5f5e
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_PASSWORD_FILE: /run/secrets/admin-test-postgres-password
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      PGDATA: /var/lib/postgresql/data
+    expose:
+      - "5432"
+    networks:
+      - backend
+    tmpfs:
+      - /var/lib/postgresql:rw,noexec,nosuid,size=256m
+      - /tmp:rw,noexec,nosuid,size=32m
+      - /var/run/postgresql:rw,noexec,nosuid,size=16m
+    secrets:
+      - admin-test-postgres-password
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'pg_isready --username "$$POSTGRES_USER" --dbname "$$POSTGRES_DB" --host 127.0.0.1',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  admin-test-redis:
+    image: redis:8.6.5-alpine3.23@sha256:cd218f4b106a332c5c992e38a9480bfb9d7e9f8f7b0ec9a0023bfa36d9a408f9
+    entrypoint: ["/usr/local/bin/admin-promptube-redis-entrypoint"]
+    environment:
+      REDIS_PASSWORD_FILE: /run/secrets/admin-test-redis-password
+    expose:
+      - "6379"
+    networks:
+      - backend
+    volumes:
+      - ./docker/redis/entrypoint.sh:/usr/local/bin/admin-promptube-redis-entrypoint:ro
+    tmpfs:
+      - /data:rw,noexec,nosuid,size=64m
+      - /tmp:rw,noexec,nosuid,size=16m
+    secrets:
+      - admin-test-redis-password
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'REDISCLI_AUTH="$$(cat /run/secrets/admin-test-redis-password)" redis-cli
+          --no-auth-warning ping | grep -qx PONG',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  admin-test-db-provision:
+    image: admin-promptube-tools:test
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: tools
+    command: ["node", "scripts/db/provision.mjs"]
+    profiles:
+      - test-tools
+    environment:
+      POSTGRES_APP_PASSWORD_FILE: /run/secrets/admin-test-postgres-app-password
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER:?POSTGRES_APP_USER is required}
+      POSTGRES_BOOTSTRAP_PASSWORD_FILE: /run/secrets/admin-test-postgres-password
+      POSTGRES_BOOTSTRAP_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_HOST: admin-test-postgres
+      POSTGRES_MIGRATION_PASSWORD_FILE: /run/secrets/admin-test-postgres-migration-password
+      POSTGRES_MIGRATION_USER: ${POSTGRES_MIGRATION_USER:?POSTGRES_MIGRATION_USER is required}
+      POSTGRES_PORT: 5432
+    networks:
+      - backend
+    secrets:
+      - admin-test-postgres-password
+      - admin-test-postgres-app-password
+      - admin-test-postgres-migration-password
+    depends_on:
+      admin-test-postgres:
+        condition: service_healthy
+    restart: "no"
+
+  admin-test-db-migrate:
+    image: admin-promptube-tools:test
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: tools
+    command: ["node", "scripts/db/migrate.mjs"]
+    profiles:
+      - test-tools
+    environment:
+      POSTGRES_APP_PASSWORD_FILE: /run/secrets/admin-test-postgres-app-password
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER:?POSTGRES_APP_USER is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_HOST: admin-test-postgres
+      POSTGRES_MIGRATION_PASSWORD_FILE: /run/secrets/admin-test-postgres-migration-password
+      POSTGRES_MIGRATION_USER: ${POSTGRES_MIGRATION_USER:?POSTGRES_MIGRATION_USER is required}
+      POSTGRES_PORT: 5432
+    networks:
+      - backend
+    secrets:
+      - admin-test-postgres-migration-password
+    depends_on:
+      admin-test-postgres:
+        condition: service_healthy
+    restart: "no"
+
+  admin-test-bootstrap:
+    image: admin-promptube-tools:test
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: tools
+    command: ["node", "scripts/db/bootstrap-admin.mjs"]
+    profiles:
+      - test-tools
+    environment:
+      ADMIN_BOOTSTRAP_EMAIL: admin.e2e@example.invalid
+      ADMIN_BOOTSTRAP_NAME: Admin E2E
+      ADMIN_BOOTSTRAP_PASSWORD_FILE: /run/secrets/admin-test-admin-password
+      APP_ENV: test
+      POSTGRES_APP_PASSWORD_FILE: /run/secrets/admin-test-postgres-app-password
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_HOST: admin-test-postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_APP_USER:?POSTGRES_APP_USER is required}
+    networks:
+      - backend
+    secrets:
+      - admin-test-postgres-app-password
+      - admin-test-admin-password
+    depends_on:
+      admin-test-postgres:
+        condition: service_healthy
+    restart: "no"
+
+  admin-test-app:
+    image: admin-promptube-app:test
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:?NEXT_PUBLIC_APP_NAME is required}
+    environment:
+      APP_ENV: test
+      APP_VERSION: ${APP_VERSION:?APP_VERSION is required}
+      BETTER_AUTH_BASE_URL: http://admin-test-reverse-proxy:8080
+      BETTER_AUTH_SECRET_FILE: /run/secrets/admin-test-better-auth-secret
+      NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:?NEXT_PUBLIC_APP_NAME is required}
+      NODE_ENV: production
+      POSTGRES_APP_PASSWORD_FILE: /run/secrets/admin-test-postgres-app-password
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_HOST: admin-test-postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_APP_USER:?POSTGRES_APP_USER is required}
+      REDIS_HOST: admin-test-redis
+      REDIS_PASSWORD_FILE: /run/secrets/admin-test-redis-password
+      REDIS_PORT: 6379
+      TRUSTED_ORIGINS: http://admin-test-reverse-proxy:8080
+    expose:
+      - "3000"
+    networks:
+      frontend:
+        aliases:
+          - admin-promptube-app
+      backend: {}
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    secrets:
+      - admin-test-postgres-app-password
+      - admin-test-redis-password
+      - admin-test-better-auth-secret
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:3000/api/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    depends_on:
+      admin-test-postgres:
+        condition: service_healthy
+      admin-test-redis:
+        condition: service_healthy
+
+  admin-test-reverse-proxy:
+    image: admin-promptube-reverse-proxy:test
+    build:
+      context: ./docker/proxy
+    depends_on:
+      admin-test-app:
+        condition: service_healthy
+    networks:
+      - frontend
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:8080/nginx-health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  admin-test-runner:
+    image: mcr.microsoft.com/playwright:v1.62.0-noble@sha256:baed2032d533817f3dbe6425de795788430ba345e819a1201337009ba17c9d07
+    profiles:
+      - test-runner
+    working_dir: /work
+    command:
+      [
+        "node",
+        "node_modules/@playwright/test/cli.js",
+        "test",
+        "--config=tests/e2e/playwright.config.ts",
+      ]
+    environment:
+      BETTER_AUTH_BASE_URL: http://admin-test-reverse-proxy:8080
+      PLAYWRIGHT_BASE_URL: http://admin-test-reverse-proxy:8080
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      POSTGRES_APP_PASSWORD_FILE: /run/secrets/admin-test-postgres-app-password
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_HOST: admin-test-postgres
+      POSTGRES_MIGRATION_PASSWORD_FILE: /run/secrets/admin-test-postgres-migration-password
+      POSTGRES_MIGRATION_USER: ${POSTGRES_MIGRATION_USER:?POSTGRES_MIGRATION_USER is required}
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_APP_USER:?POSTGRES_APP_USER is required}
+      REDIS_HOST: admin-test-redis
+      REDIS_PASSWORD_FILE: /run/secrets/admin-test-redis-password
+      REDIS_PORT: 6379
+      TEST_ADMIN_EMAIL: admin.e2e@example.invalid
+      TEST_ADMIN_PASSWORD_FILE: /run/secrets/admin-test-admin-password
+    networks:
+      - frontend
+      - backend
+    volumes:
+      - .:/work:ro
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=256m
+    secrets:
+      - admin-test-postgres-app-password
+      - admin-test-postgres-migration-password
+      - admin-test-redis-password
+      - admin-test-admin-password
+    depends_on:
+      admin-test-reverse-proxy:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    restart: "no"
+
+networks:
+  frontend:
+  backend:
+    internal: true
+
+secrets:
+  admin-test-postgres-password:
+    file: ${TEST_SECRETS_DIR:?TEST_SECRETS_DIR is required}/postgres-password
+  admin-test-postgres-app-password:
+    file: ${TEST_SECRETS_DIR:?TEST_SECRETS_DIR is required}/postgres-app-password
+  admin-test-postgres-migration-password:
+    file: ${TEST_SECRETS_DIR:?TEST_SECRETS_DIR is required}/postgres-migration-password
+  admin-test-redis-password:
+    file: ${TEST_SECRETS_DIR:?TEST_SECRETS_DIR is required}/redis-password
+  admin-test-better-auth-secret:
+    file: ${TEST_SECRETS_DIR:?TEST_SECRETS_DIR is required}/better-auth-secret
+  admin-test-admin-password:
+    file: ${TEST_SECRETS_DIR:?TEST_SECRETS_DIR is required}/admin-password

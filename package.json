@@ -10,6 +10,11 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:scripts": "./tests/scripts/docker-scripts.test.sh",
+    "test:integration": "./scripts/test-auth-all.sh integration",
+    "test:e2e": "./scripts/test-auth-all.sh e2e",
+    "test:auth": "./scripts/test-auth-all.sh auth",
+    "test:auth:security": "./scripts/test-auth-all.sh security",
+    "test:auth:all": "./scripts/test-auth-all.sh all",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "format": "prettier --write .",
@@ -35,6 +40,9 @@
     "docker:health": "./scripts/docker-health.sh",
     "docker:verify": "./scripts/verify-docker-stack.sh",
     "docker:verify:storage": "EXPECT_STORAGE=1 ./scripts/verify-docker-stack.sh",
+    "docker:test:config": "./scripts/test-auth-all.sh config",
+    "docker:test:up": "./scripts/test-auth-all.sh up",
+    "docker:test:down": "./scripts/test-auth-all.sh down",
     "docker:down": "./scripts/docker-compose.sh down"
   },
   "dependencies": {
@@ -52,6 +60,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.0",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^7.0.0",
@@ -61,6 +70,7 @@
     "@types/qrcode": "1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@playwright/test": "1.62.0",
     "@vitejs/plugin-react": "^6.0.4",
     "@vitest/coverage-v8": "^4.1.10",
     "drizzle-kit": "0.31.10",

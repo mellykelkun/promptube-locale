@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+/playwright-report/
+/test-results/
 
 # next.js
 /.next/
@@ -42,6 +44,9 @@ yarn-error.log*
 /backups/
 /.tmp-db-tests/
 /.tmp-integration-tests/
+/.tmp-auth-test.*/
+/.tmp-trivy-scan.*/
+/.tmp-trivy-cache.*/
 
 # env files (can opt-in for committing if needed)
 .env*

@@ -39,10 +39,25 @@ async function readPassword(prompt) {
   return value;
 }
 
-try {
-  const admins = await client.query("select 1 from \"user\" where role = 'admin' limit 1");
-  if (admins.rowCount > 0) {
-    throw new Error("An administrator already exists; bootstrap refused.");
+async function readBootstrapInput() {
+  if (process.env.ADMIN_BOOTSTRAP_PASSWORD_FILE) {
+    if (process.env.APP_ENV !== "test") {
+      throw new Error("Non-interactive admin bootstrap is restricted to APP_ENV=test.");
+    }
+
+    const email = process.env.ADMIN_BOOTSTRAP_EMAIL?.trim().toLowerCase();
+    const name = process.env.ADMIN_BOOTSTRAP_NAME?.trim();
+    const secretPassword = await readSecretFile(process.env.ADMIN_BOOTSTRAP_PASSWORD_FILE);
+
+    if (!email || !name) {
+      throw new Error("Missing non-interactive bootstrap identity.");
+    }
+
+    return {
+      email,
+      name,
+      password: secretPassword,
+    };
   }
 
   const email = (await rl.question("Email administrateur: ")).trim().toLowerCase();
@@ -53,13 +68,28 @@ try {
   if (firstPassword !== secondPassword) {
     throw new Error("Password confirmation does not match.");
   }
-  validatePassword(firstPassword);
+
+  return {
+    email,
+    name,
+    password: firstPassword,
+  };
+}
+
+try {
+  const admins = await client.query("select 1 from \"user\" where role = 'admin' limit 1");
+  if (admins.rowCount > 0) {
+    throw new Error("An administrator already exists; bootstrap refused.");
+  }
+
+  const bootstrapInput = await readBootstrapInput();
+  validatePassword(bootstrapInput.password);
 
   const now = new Date();
   const userId = randomUUID();
   const accountId = randomUUID();
   const auditId = randomUUID();
-  const passwordHash = await hash(firstPassword, {
+  const passwordHash = await hash(bootstrapInput.password, {
     algorithm: 2,
     memoryCost: 64 * 1024,
     parallelism: 1,
@@ -70,7 +100,7 @@ try {
   await client.query(
     `insert into "user" (id, name, email, "emailVerified", "createdAt", "updatedAt", role, banned, "twoFactorEnabled")
      values ($1, $2, $3, true, $4, $4, 'admin', false, false)`,
-    [userId, name, email, now],
+    [userId, bootstrapInput.name, bootstrapInput.email, now],
   );
   await client.query(
     `insert into account (id, "accountId", "providerId", "userId", password, "createdAt", "updatedAt")
