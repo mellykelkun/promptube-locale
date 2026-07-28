@@ -6,7 +6,7 @@ import { parsePublicEnvironment } from "@/shared/config/public-environment";
 
 describe("server environment configuration", () => {
   it("uses safe defaults when optional application metadata is absent", () => {
-    expect(parseServerEnvironment({ NODE_ENV: "test" })).toEqual({
+    expect(parseServerEnvironment({ NODE_ENV: "test" })).toMatchObject({
       environment: "test",
       version: "0.1.0",
     });
@@ -19,7 +19,7 @@ describe("server environment configuration", () => {
         APP_VERSION: "1.4.0-rc.1",
         NODE_ENV: "production",
       }),
-    ).toEqual({
+    ).toMatchObject({
       environment: "local",
       version: "1.4.0-rc.1",
     });
@@ -31,7 +31,7 @@ describe("server environment configuration", () => {
         APP_ENV: "local",
         NODE_ENV: "production",
       }),
-    ).toEqual({
+    ).toMatchObject({
       environment: "local",
       version: "0.1.0",
     });

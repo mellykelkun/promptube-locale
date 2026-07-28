@@ -8,6 +8,7 @@ environment_file="$project_dir/.env.docker"
 secrets_dir="$project_dir/secrets"
 secret_library="$project_dir/scripts/lib/docker-secrets.sh"
 temporary_directory=""
+expect_storage="${EXPECT_STORAGE:-0}"
 
 fail() {
   echo "$1" >&2
@@ -15,9 +16,13 @@ fail() {
 }
 
 cleanup() {
-  if [ -n "$temporary_directory" ] && [ -d "$temporary_directory" ]; then
-    rm -rf -- "$temporary_directory"
-  fi
+  case "$temporary_directory" in
+    "$project_dir"/.tmp-docker-verify.*)
+      if [ -d "$temporary_directory" ]; then
+        rm -rf -- "$temporary_directory"
+      fi
+      ;;
+  esac
 }
 
 trap cleanup EXIT HUP INT TERM
@@ -39,6 +44,11 @@ fi
 . "$secret_library"
 validate_all_docker_secrets
 
+case "$expect_storage" in
+  0 | 1) ;;
+  *) fail "EXPECT_STORAGE must be 0 or 1." ;;
+esac
+
 port_definition_count="$(grep -c '^ADMIN_HTTP_PORT=' "$environment_file" || true)"
 if [ "$port_definition_count" -ne 1 ]; then
   fail "ADMIN_HTTP_PORT must be defined exactly once."
@@ -55,8 +65,13 @@ if [ "$http_port" -lt 1024 ] || [ "$http_port" -gt 65535 ]; then
   fail "ADMIN_HTTP_PORT must be between 1024 and 65535."
 fi
 
-compose_configuration="$("$compose" config --format json)"
-printf '%s' "$compose_configuration" | jq -e '
+if [ "$expect_storage" = "1" ]; then
+  compose_configuration="$(COMPOSE_PROFILES=storage "$compose" config --format json)"
+else
+  compose_configuration="$("$compose" config --format json)"
+fi
+
+printf '%s' "$compose_configuration" | jq -e --argjson expect_storage "$expect_storage" '
   .name == "promptube_admin"
   and (.services | all(
     (has("container_name") | not)
@@ -66,8 +81,18 @@ printf '%s' "$compose_configuration" | jq -e '
     and ((.ipc // "") != "host")
   ))
   and ((.services["admin-promptube-app"].depends_on // {}) | length == 0)
-  and ((.services["admin-promptube-app"].networks | keys | sort) == ["frontend"])
+  and ((.services["admin-promptube-app"].networks | keys | sort) == ["backend", "frontend"])
   and ((.services["admin-promptube-reverse-proxy"].networks | keys | sort) == ["frontend"])
+  and ((.services["admin-promptube-postgres"].networks | keys | sort) == ["backend"])
+  and ((.services["admin-promptube-redis"].networks | keys | sort) == ["backend"])
+  and (
+    if $expect_storage == 1 then
+      ((.services["admin-promptube-object-storage"].profiles // []) == ["storage"])
+      and ((.services["admin-promptube-object-storage"].networks | keys | sort) == ["backend"])
+    else
+      (.services["admin-promptube-object-storage"] == null)
+    end
+  )
   and (.networks.backend.internal == true)
 ' >/dev/null || fail "Rendered Compose configuration violates the expected isolation."
 
@@ -78,28 +103,37 @@ fi
 "$project_dir/scripts/docker-health.sh"
 
 temporary_directory="$(mktemp -d "$project_dir/.tmp-docker-verify.XXXXXX")"
-root_headers="$temporary_directory/root-headers"
-root_body_file="$temporary_directory/root-body"
-health_headers="$temporary_directory/health-headers"
-health_body_file="$temporary_directory/health-body"
+login_headers="$temporary_directory/login-headers"
+login_body_file="$temporary_directory/login-body"
+live_headers="$temporary_directory/live-headers"
+live_body_file="$temporary_directory/live-body"
+ready_headers="$temporary_directory/ready-headers"
+ready_body_file="$temporary_directory/ready-body"
 
 base_url="http://127.0.0.1:$http_port"
 curl \
   --fail \
   --silent \
   --show-error \
-  --dump-header "$root_headers" \
-  --output "$root_body_file" \
-  "$base_url/"
+  --dump-header "$login_headers" \
+  --output "$login_body_file" \
+  "$base_url/login"
 curl \
   --fail \
   --silent \
   --show-error \
-  --dump-header "$health_headers" \
-  --output "$health_body_file" \
-  "$base_url/api/health"
+  --dump-header "$live_headers" \
+  --output "$live_body_file" \
+  "$base_url/api/health/live"
+curl \
+  --fail \
+  --silent \
+  --show-error \
+  --dump-header "$ready_headers" \
+  --output "$ready_body_file" \
+  "$base_url/api/health/ready"
 
-sed -i 's/\r$//' "$root_headers" "$health_headers"
+sed -i 's/\r$//' "$login_headers" "$live_headers" "$ready_headers"
 
 jq -e '
   .status == "ok"
@@ -109,41 +143,54 @@ jq -e '
   and (.timestamp | type == "string"
     and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"))
   and (keys | sort == ["environment", "service", "status", "timestamp", "version"])
-' "$health_body_file" >/dev/null || fail "Healthcheck response does not match the stable public contract."
+' "$live_body_file" >/dev/null || fail "Liveness response does not match the stable public contract."
 
-if grep -Eqi 'password|secret|stack|token|cookie|authorization|/home/|/app/' "$health_body_file"; then
-  fail "Healthcheck response contains a forbidden sensitive marker."
-fi
+jq -e '
+  .status == "ok"
+  and .service == "promptube-admin-locale"
+  and .environment == "local"
+  and (.version | type == "string" and length > 0)
+  and (.timestamp | type == "string"
+    and test("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"))
+  and .dependencies.postgres == "ok"
+  and .dependencies.redis == "ok"
+  and (.dependencies | keys | sort == ["postgres", "redis"])
+  and (keys | sort == ["dependencies", "environment", "service", "status", "timestamp", "version"])
+' "$ready_body_file" >/dev/null || fail "Readiness response does not match the stable public contract."
 
-if grep -Eqi 'fonts\.googleapis\.com|fonts\.gstatic\.com' "$root_body_file"; then
+for public_body in "$live_body_file" "$ready_body_file"; do
+  if grep -Eqi 'password|secret|stack|token|cookie|authorization|/home/|/app/' "$public_body"; then
+    fail "A public health response contains a forbidden sensitive marker."
+  fi
+done
+
+if grep -Eqi 'fonts\.googleapis\.com|fonts\.gstatic\.com' "$login_body_file"; then
   fail "The browser response references a remote Google Font."
 fi
 
-for header_file in "$root_headers" "$health_headers"; do
-  grep -Eqi '^x-content-type-options: nosniff\r?$' "$header_file" ||
+for header_file in "$login_headers" "$live_headers" "$ready_headers"; do
+  grep -Eqi '^x-content-type-options: nosniff$' "$header_file" ||
     fail "X-Content-Type-Options is missing."
-  grep -Eqi '^x-frame-options: DENY\r?$' "$header_file" ||
+  grep -Eqi '^x-frame-options: DENY$' "$header_file" ||
     fail "X-Frame-Options is missing."
 
-  request_id_count="$(grep -Eic '^x-request-id: [0-9a-f]{32}\r?$' "$header_file" || true)"
-  correlation_id_count="$(grep -Eic '^x-correlation-id: [0-9a-f]{32}\r?$' "$header_file" || true)"
+  request_id_count="$(grep -Eic '^x-request-id: [0-9a-f]{32}$' "$header_file" || true)"
+  correlation_id_count="$(grep -Eic '^x-correlation-id: [0-9a-f]{32}$' "$header_file" || true)"
   if [ "$request_id_count" -ne 1 ] || [ "$correlation_id_count" -ne 1 ]; then
     fail "Proxy request identifiers are missing or ambiguous."
   fi
 
-  request_id="$(sed -n 's/^[Xx]-[Rr]equest-[Ii][Dd]: \([0-9a-f]\{32\}\)\r*$/\1/p' "$header_file")"
-  correlation_id="$(sed -n 's/^[Xx]-[Cc]orrelation-[Ii][Dd]: \([0-9a-f]\{32\}\)\r*$/\1/p' "$header_file")"
+  request_id="$(sed -n 's/^[Xx]-[Rr]equest-[Ii][Dd]: \([0-9a-f]\{32\}\)$/\1/p' "$header_file")"
+  correlation_id="$(sed -n 's/^[Xx]-[Cc]orrelation-[Ii][Dd]: \([0-9a-f]\{32\}\)$/\1/p' "$header_file")"
   if [ "$request_id" != "$correlation_id" ]; then
     fail "X-Request-ID and X-Correlation-ID are not coherent."
   fi
-
-  if grep -Eqi '^set-cookie:' "$header_file"; then
-    fail "The technical foundation unexpectedly emits a cookie."
-  fi
 done
 
-grep -Eqi '^cache-control: no-store\r?$' "$health_headers" ||
-  fail "Healthcheck response must use Cache-Control: no-store."
+grep -Eqi '^cache-control: no-store$' "$live_headers" ||
+  fail "Liveness response must use Cache-Control: no-store."
+grep -Eqi '^cache-control: no-store$' "$ready_headers" ||
+  fail "Readiness response must use Cache-Control: no-store."
 
 proxy_id="$("$compose" ps -q admin-promptube-reverse-proxy)"
 docker inspect "$proxy_id" | jq -e --arg port "$http_port" '
@@ -153,15 +200,16 @@ docker inspect "$proxy_id" | jq -e --arg port "$http_port" '
     and .[0].HostPort == $port
 ' >/dev/null || fail "The proxy host binding is not restricted to the configured loopback port."
 
+service_names="admin-promptube-reverse-proxy admin-promptube-app admin-promptube-postgres admin-promptube-redis"
+if [ "$expect_storage" = "1" ]; then
+  service_names="$service_names admin-promptube-object-storage"
+elif [ -n "$("$compose" ps -q admin-promptube-object-storage)" ]; then
+  fail "Object storage is running although EXPECT_STORAGE=1 was not requested."
+fi
+
 all_container_ids=""
 
-for service_name in \
-  admin-promptube-reverse-proxy \
-  admin-promptube-app \
-  admin-promptube-postgres \
-  admin-promptube-redis \
-  admin-promptube-object-storage
-do
+for service_name in $service_names; do
   container_id="$("$compose" ps -q "$service_name")"
   if [ -z "$container_id" ]; then
     fail "$service_name is not running."
@@ -209,7 +257,7 @@ do
       expected_tmpfs='["/tmp"]'
       ;;
     admin-promptube-app)
-      expected_networks='["promptube_admin_frontend"]'
+      expected_networks='["promptube_admin_backend","promptube_admin_frontend"]'
       expected_capabilities='[]'
       expected_tmpfs='["/tmp"]'
       ;;
@@ -262,9 +310,12 @@ done
 
 postgres_id="$("$compose" ps -q admin-promptube-postgres)"
 redis_id="$("$compose" ps -q admin-promptube-redis)"
-storage_id="$("$compose" ps -q admin-promptube-object-storage)"
 app_id="$("$compose" ps -q admin-promptube-app)"
 proxy_id="$("$compose" ps -q admin-promptube-reverse-proxy)"
+storage_id=""
+if [ "$expect_storage" = "1" ]; then
+  storage_id="$("$compose" ps -q admin-promptube-object-storage)"
+fi
 
 postgres_uid="$(docker exec "$postgres_id" id -u postgres)"
 redis_uid="$(docker exec "$redis_id" id -u redis)"
@@ -279,19 +330,26 @@ if [ "$redis_process_uid" != "$redis_uid" ]; then
   fail "Redis did not drop to its dedicated runtime user."
 fi
 
-for non_root_container in "$app_id" "$proxy_id" "$storage_id"; do
-  if [ "$(docker exec "$non_root_container" id -u)" -eq 0 ]; then
+for non_root_container in "$app_id" "$proxy_id" $storage_id; do
+  if [ -n "$non_root_container" ] && [ "$(docker exec "$non_root_container" id -u)" -eq 0 ]; then
     fail "A user-facing service is running as root."
   fi
 done
 
-for secret_mapping in \
-  "$postgres_id:admin-promptube-postgres-password" \
-  "$redis_id:admin-promptube-redis-password" \
-  "$storage_id:admin-promptube-object-storage-password"
-do
-  secret_container="${secret_mapping%%:*}"
-  mounted_secret_name="${secret_mapping#*:}"
+secret_mappings="
+$postgres_id:admin-promptube-postgres-password
+$redis_id:admin-promptube-redis-password
+$app_id:admin-promptube-postgres-app-password
+$app_id:admin-promptube-redis-password
+$app_id:admin-promptube-better-auth-secret
+"
+
+if [ -n "$storage_id" ]; then
+  secret_mappings="$secret_mappings
+$storage_id:admin-promptube-object-storage-password"
+fi
+
+printf '%s\n' "$secret_mappings" | sed '/^$/d' | while IFS=: read -r secret_container mounted_secret_name; do
   mounted_secret_path="/run/secrets/$mounted_secret_name"
 
   docker exec "$secret_container" test -f "$mounted_secret_path" ||
@@ -310,7 +368,14 @@ do
   ' >/dev/null || fail "A Docker secret is not mounted read-only."
 done
 
-for secret_name in postgres-password redis-password object-storage-password; do
+for secret_name in \
+  postgres-password \
+  postgres-app-password \
+  postgres-migration-password \
+  redis-password \
+  better-auth-secret \
+  object-storage-password
+do
   secret_pattern_file="$secrets_dir/$secret_name"
 
   if "$compose" logs --no-color | grep -a -F -q -f "$secret_pattern_file"; then
@@ -322,18 +387,22 @@ for secret_name in postgres-password redis-password object-storage-password; do
   fi
 done
 
-for expected_image in \
-  admin-promptube-app:0.1.0 \
-  admin-promptube-reverse-proxy:1.31.3 \
-  admin-promptube-object-storage:RELEASE.2025-10-15T17-29-55Z
-do
+expected_images="admin-promptube-app:0.1.0 admin-promptube-reverse-proxy:1.31.3"
+if [ "$expect_storage" = "1" ]; then
+  expected_images="$expected_images admin-promptube-object-storage:RELEASE.2025-10-15T17-29-55Z"
+fi
+
+for expected_image in $expected_images; do
   docker image inspect "$expected_image" >/dev/null 2>&1 ||
     fail "Expected runtime image is missing: $expected_image"
 
   if docker image save "$expected_image" 2>/dev/null |
     grep -a -F -q \
       -f "$secrets_dir/postgres-password" \
+      -f "$secrets_dir/postgres-app-password" \
+      -f "$secrets_dir/postgres-migration-password" \
       -f "$secrets_dir/redis-password" \
+      -f "$secrets_dir/better-auth-secret" \
       -f "$secrets_dir/object-storage-password"; then
     fail "A secret value was detected in a project runtime image."
   fi
@@ -366,29 +435,31 @@ docker run \
       >/dev/null 2>&1
   ' || fail "The application runtime image contains a forbidden build or local artifact."
 
-docker run \
-  --rm \
-  --entrypoint /bin/sh \
-  admin-promptube-object-storage:RELEASE.2025-10-15T17-29-55Z \
-  -ec '
-    test ! -e /.git
-    test ! -e /src
-    ! command -v gcc >/dev/null 2>&1
-    ! command -v go >/dev/null 2>&1
-    ! command -v make >/dev/null 2>&1
-  ' || fail "The object-storage runtime image contains source or compiler tooling."
-
-minio_version="$(
+if [ "$expect_storage" = "1" ]; then
   docker run \
     --rm \
-    --entrypoint /usr/local/bin/minio \
+    --entrypoint /bin/sh \
     admin-promptube-object-storage:RELEASE.2025-10-15T17-29-55Z \
-    --version
-)"
+    -ec '
+      test ! -e /.git
+      test ! -e /src
+      ! command -v gcc >/dev/null 2>&1
+      ! command -v go >/dev/null 2>&1
+      ! command -v make >/dev/null 2>&1
+    ' || fail "The object-storage runtime image contains source or compiler tooling."
 
-printf '%s' "$minio_version" | grep -Fq 'RELEASE.2025-10-15T17-29-55Z' ||
-  fail "The object-storage binary reports an unexpected release."
-printf '%s' "$minio_version" | grep -Fq '9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a' ||
-  fail "The object-storage binary reports an unexpected source commit."
+  minio_version="$(
+    docker run \
+      --rm \
+      --entrypoint /usr/local/bin/minio \
+      admin-promptube-object-storage:RELEASE.2025-10-15T17-29-55Z \
+      --version
+  )"
+
+  printf '%s' "$minio_version" | grep -Fq 'RELEASE.2025-10-15T17-29-55Z' ||
+    fail "The object-storage binary reports an unexpected release."
+  printf '%s' "$minio_version" | grep -Fq '9e49d5e7a648f00e26f2246f4dc28e6b07f8c84a' ||
+    fail "The object-storage binary reports an unexpected source commit."
+fi
 
 echo "Docker stack verification passed."
