@@ -107,6 +107,12 @@ export async function requireCompletedTwoFactor(): Promise<AdminSession> {
   const current = await requireAdminSession();
 
   if (!current.admin.twoFactorEnabled) {
+    await writeAuditEvent({
+      action: auditActions.authorizationDenied,
+      actorUserId: current.admin.id,
+      outcome: "failure",
+      targetType: "two-factor-required",
+    });
     redirect("/setup-2fa");
   }
 

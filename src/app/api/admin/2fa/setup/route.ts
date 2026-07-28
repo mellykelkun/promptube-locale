@@ -7,6 +7,18 @@ import { requireAdminSession } from "@/server/auth/session";
 import { auditActions } from "@/server/audit/audit-events";
 import { writeAuditEvent } from "@/server/audit/audit-service";
 
+export function GET(): Response {
+  return NextResponse.json(
+    { error: "Methode non autorisee." },
+    {
+      headers: {
+        Allow: "POST",
+      },
+      status: 405,
+    },
+  );
+}
+
 export async function POST(request: NextRequest): Promise<Response> {
   const current = await requireAdminSession();
   const body = await request.json().catch(() => null);

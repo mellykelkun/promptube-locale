@@ -47,6 +47,14 @@ export async function POST(request: NextRequest): Promise<Response> {
     outcome: "success",
   });
 
+  if (!responseBody?.twoFactorRedirect) {
+    await writeAuditEvent({
+      action: auditActions.sessionCreated,
+      actorUserId: responseBody?.user?.id,
+      outcome: "success",
+    });
+  }
+
   const sanitizedResponse = NextResponse.json({
     ok: true,
     twoFactorRedirect: Boolean(responseBody?.twoFactorRedirect),

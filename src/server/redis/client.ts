@@ -7,7 +7,8 @@ import { readDockerSecret } from "@/server/config/secrets";
 
 let redisClientPromise: Promise<RedisClientType> | undefined;
 
-export const REDIS_KEY_PREFIX = "promptube:admin:";
+export const REDIS_KEY_PREFIX =
+  serverEnvironment.environment === "test" ? "promptube:test:" : "promptube:admin:";
 
 async function createRedisConnection(): Promise<RedisClientType> {
   const password = await readDockerSecret(serverEnvironment.redis.passwordFile);

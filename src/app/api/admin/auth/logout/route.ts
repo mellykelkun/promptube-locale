@@ -1,31 +1,38 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
 
-import { getAuth } from "@/server/auth/auth";
 import { getOptionalAdminSession } from "@/server/auth/session";
 import { auditActions } from "@/server/audit/audit-events";
 import { writeAuditEvent } from "@/server/audit/audit-service";
 import { serverEnvironment } from "@/server/config/environment";
+import { getDatabase } from "@/server/database/client";
+import { session } from "@/server/database/schema";
 
-export async function POST(request: NextRequest): Promise<Response> {
+export async function POST(): Promise<Response> {
   const current = await getOptionalAdminSession();
-  const auth = await getAuth();
-
-  const authResponse = await auth.handler(
-    new Request(new URL("/api/auth/sign-out", request.url), {
-      headers: request.headers,
-      method: "POST",
-    }),
-  );
-
-  if (!authResponse.ok) {
-    return NextResponse.json({ error: "Déconnexion impossible." }, { status: authResponse.status });
-  }
 
   const response = NextResponse.redirect(new URL("/login", serverEnvironment.authBaseUrl), {
     status: 303,
   });
 
   if (current) {
+    const now = new Date();
+    const db = await getDatabase();
+
+    await db
+      .update(session)
+      .set({
+        expiresAt: now,
+        revokedAt: now,
+        updatedAt: now,
+      })
+      .where(eq(session.id, current.sessionId));
+
+    await writeAuditEvent({
+      action: auditActions.sessionRevoked,
+      actorUserId: current.admin.id,
+      outcome: "success",
+    });
     await writeAuditEvent({
       action: auditActions.logoutSucceeded,
       actorUserId: current.admin.id,
@@ -33,25 +40,29 @@ export async function POST(request: NextRequest): Promise<Response> {
     });
   }
 
-  copySetCookieHeaders(authResponse, response);
+  expireAuthCookies(response);
   return response;
 }
 
-function copySetCookieHeaders(source: Response, target: NextResponse): void {
-  const headersWithSetCookie = source.headers as Headers & {
-    getSetCookie?: () => string[];
-  };
-  const setCookies = headersWithSetCookie.getSetCookie?.() ?? [];
+function expireAuthCookies(response: NextResponse): void {
+  const secure = !["local", "test"].includes(serverEnvironment.environment);
+  const cookieNames = [
+    "promptube-admin.session_token",
+    "promptube-admin.session_data",
+    "promptube-admin.two_factor",
+    "__Secure-promptube-admin.session_token",
+    "__Secure-promptube-admin.session_data",
+    "__Secure-promptube-admin.two_factor",
+  ];
 
-  if (setCookies.length > 0) {
-    for (const cookie of setCookies) {
-      target.headers.append("set-cookie", cookie);
-    }
-    return;
-  }
-
-  const cookie = source.headers.get("set-cookie");
-  if (cookie) {
-    target.headers.append("set-cookie", cookie);
+  for (const name of cookieNames) {
+    response.cookies.set(name, "", {
+      expires: new Date(0),
+      httpOnly: true,
+      maxAge: 0,
+      path: "/",
+      sameSite: "strict",
+      secure,
+    });
   }
 }

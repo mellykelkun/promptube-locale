@@ -34,13 +34,12 @@ export function TotpVerifyForm() {
   return (
     <form className="grid gap-5" onSubmit={handleSubmit}>
       <label className="text-sm font-medium text-slate-200" htmlFor="code">
-        Code TOTP
+        Code TOTP ou code de secours
       </label>
       <input
         autoComplete="one-time-code"
         className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-3 text-slate-100 outline-none transition focus:border-cyan-300"
         id="code"
-        inputMode="numeric"
         name="code"
         required
       />

@@ -2,7 +2,7 @@
 
 set -eu
 
-secret_file="/run/secrets/admin-promptube-redis-password"
+secret_file="${REDIS_PASSWORD_FILE:-/run/secrets/admin-promptube-redis-password}"
 runtime_config="/tmp/admin-promptube-redis.conf"
 
 if [ -L "$secret_file" ]; then

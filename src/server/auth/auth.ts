@@ -21,10 +21,21 @@ export function getAuth(): ReturnType<typeof createAuth> {
 }
 
 async function createAuth() {
-  const secureCookies = serverEnvironment.environment !== "local";
+  const secureCookies = !["local", "test"].includes(serverEnvironment.environment);
+  const isTestEnvironment = serverEnvironment.environment === "test";
+  const signInRateLimit = {
+    max: isTestEnvironment ? 20 : 5,
+    window: isTestEnvironment ? 10 : 15 * 60,
+  };
+  const totpRateLimit = {
+    max: isTestEnvironment ? 10 : 5,
+    window: isTestEnvironment ? 10 : 15 * 60,
+  };
 
   if (secureCookies && !serverEnvironment.authBaseUrl.startsWith("https://")) {
-    throw new Error("Secure cookies require an HTTPS Better Auth base URL outside APP_ENV=local.");
+    throw new Error(
+      "Secure cookies require an HTTPS Better Auth base URL outside APP_ENV=local or APP_ENV=test.",
+    );
   }
 
   const secret = await readDockerSecret(serverEnvironment.betterAuthSecretFile);
@@ -70,14 +81,8 @@ async function createAuth() {
     ],
     rateLimit: {
       customRules: {
-        "/sign-in/email": {
-          max: 5,
-          window: 15 * 60,
-        },
-        "/two-factor/verify-totp": {
-          max: 5,
-          window: 15 * 60,
-        },
+        "/sign-in/email": signInRateLimit,
+        "/two-factor/verify-totp": totpRateLimit,
       },
       customStorage: redisRateLimitStorage,
       enabled: true,
