@@ -168,6 +168,34 @@ try {
     throw new Error("Restored migration registry is empty.");
   }
 
+  if (Number(migrationCount) >= 2) {
+    const catalogTableCount = (
+      await capture("docker", [
+        "compose",
+        "--project-name",
+        projectName,
+        "--env-file",
+        envFile,
+        "--file",
+        composeFile,
+        "exec",
+        "-T",
+        "admin-restore-postgres",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "restore_check",
+        "-Atqc",
+        "select count(*) from information_schema.tables where table_schema='public' and table_name in ('catalog_categories','catalog_subcategories','catalog_modules','catalog_module_versions')",
+      ])
+    ).trim();
+
+    if (catalogTableCount !== "4") {
+      throw new Error("Restored schema does not contain all expected catalog tables.");
+    }
+  }
+
   console.log(`Backup restored in isolated environment: ${selected.manifest.backupId}`);
 } finally {
   await cleanup();

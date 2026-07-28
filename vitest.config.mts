@@ -20,8 +20,13 @@ export default defineConfig({
       reportsDirectory: "./coverage",
       include: [
         "src/modules/dashboard/components/**/*.{ts,tsx}",
+        "src/modules/catalog/components/**/*.{ts,tsx}",
         "src/server/auth/email.ts",
         "src/server/auth/password.ts",
+        "src/server/catalog/catalog-errors.ts",
+        "src/server/catalog/catalog-policy.ts",
+        "src/server/catalog/catalog-validation.ts",
+        "src/server/catalog/catalog-workflow.ts",
         "src/server/config/**/*.ts",
         "src/server/errors/**/*.ts",
         "src/server/health/**/*.ts",

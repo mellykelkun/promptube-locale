@@ -167,6 +167,31 @@ services:
         condition: service_healthy
     restart: "no"
 
+  admin-test-sessions-revoke-all:
+    image: admin-promptube-tools:test
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: tools
+    command: ["node", "scripts/db/revoke-all-sessions.mjs"]
+    profiles:
+      - test-tools
+    environment:
+      APP_ENV: test
+      POSTGRES_APP_PASSWORD_FILE: /run/secrets/admin-test-postgres-app-password
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_HOST: admin-test-postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_APP_USER:?POSTGRES_APP_USER is required}
+    networks:
+      - backend
+    secrets:
+      - admin-test-postgres-app-password
+    depends_on:
+      admin-test-postgres:
+        condition: service_healthy
+    restart: "no"
+
   admin-test-app:
     image: admin-promptube-app:test
     build:
@@ -250,16 +275,19 @@ services:
     working_dir: /work
     command:
       [
-        "node",
-        "node_modules/@playwright/test/cli.js",
-        "test",
-        "--config=tests/e2e/playwright.config.ts",
+        "sh",
+        "-c",
+        "node node_modules/@playwright/test/cli.js test --config=tests/e2e/playwright.config.ts
+        $${PLAYWRIGHT_TEST_SPEC:-tests/e2e/admin-auth-flow.spec.ts}",
       ]
     environment:
       BETTER_AUTH_BASE_URL: http://admin-test-reverse-proxy:8080
       PLAYWRIGHT_BASE_URL: http://admin-test-reverse-proxy:8080
       PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
+      PLAYWRIGHT_TEST_SPEC: ${PLAYWRIGHT_TEST_SPEC:-tests/e2e/admin-auth-flow.spec.ts}
       POSTGRES_APP_PASSWORD_FILE: /run/secrets/admin-test-postgres-app-password
+      POSTGRES_BACKUP_PASSWORD_FILE: /run/secrets/admin-test-postgres-backup-password
+      POSTGRES_BACKUP_USER: ${POSTGRES_BACKUP_USER:?POSTGRES_BACKUP_USER is required}
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
       POSTGRES_HOST: admin-test-postgres
       POSTGRES_MIGRATION_PASSWORD_FILE: /run/secrets/admin-test-postgres-migration-password
@@ -281,6 +309,7 @@ services:
     secrets:
       - admin-test-postgres-app-password
       - admin-test-postgres-migration-password
+      - admin-test-postgres-backup-password
       - admin-test-redis-password
       - admin-test-admin-password
     depends_on:
