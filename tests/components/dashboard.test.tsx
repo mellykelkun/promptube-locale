@@ -1,11 +1,16 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
-import DashboardPage from "@/app/page";
+import { DashboardOverview } from "@/modules/dashboard/components/dashboard-overview";
+import { AdminShell } from "@/shared/components/admin-shell";
 
 describe("admin dashboard foundation", () => {
   it("renders the semantic admin shell and marks future sections as unavailable", () => {
-    render(<DashboardPage />);
+    render(
+      <AdminShell>
+        <DashboardOverview />
+      </AdminShell>,
+    );
 
     expect(
       screen.getByRole("heading", {

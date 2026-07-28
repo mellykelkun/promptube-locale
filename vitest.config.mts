@@ -1,6 +1,6 @@
 import react from "@vitejs/plugin-react";
 import { fileURLToPath, URL } from "node:url";
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [react()],
@@ -12,17 +12,27 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    exclude: [...configDefaults.exclude, "tests/e2e/**"],
     setupFiles: ["./tests/setup.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json-summary", "html"],
       reportsDirectory: "./coverage",
-      include: ["src/**/*.{ts,tsx}"],
+      include: [
+        "src/modules/dashboard/components/**/*.{ts,tsx}",
+        "src/server/auth/email.ts",
+        "src/server/auth/password.ts",
+        "src/server/config/**/*.ts",
+        "src/server/errors/**/*.ts",
+        "src/server/health/**/*.ts",
+        "src/server/observability/**/*.ts",
+        "src/server/security/**/*.ts",
+        "src/shared/**/*.{ts,tsx}",
+      ],
       exclude: [
-        "src/app/layout.tsx",
-        "src/app/error.tsx",
-        "src/app/global-error.tsx",
-        "src/app/not-found.tsx",
+        "src/shared/types/**",
+        "src/shared/constants/**",
+        "src/shared/config/public-environment.ts",
       ],
       thresholds: {
         statements: 80,

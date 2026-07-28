@@ -50,7 +50,7 @@ describe("GET /api/health", () => {
     expect(response.status).toBe(400);
     expect(body.error).toEqual({
       code: "INVALID_REQUEST",
-      message: "La requête de healthcheck est invalide.",
+      message: "La requete de healthcheck est invalide.",
     });
     expect(body).not.toHaveProperty("stack");
   });

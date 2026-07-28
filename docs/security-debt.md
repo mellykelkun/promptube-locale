@@ -12,6 +12,11 @@ sortie non nul sans correction stable compatible. Cette séparation ne vaut ni c
 acceptation définitive du risque. Aucun `audit fix`, override transitif, paquet canary ou
 rétrogradation n’est autorisé pour les contourner.
 
+`@playwright/test` est utilisé uniquement comme dépendance de développement pour l’environnement
+isolé `promptube_admin_test`. Playwright et Chromium ne sont pas copiés dans l’image runtime Next.js
+; toute vulnérabilité éventuelle de cet outillage doit être évaluée comme dette de test, pas comme
+surface applicative exposée.
+
 ## Stockage objet local
 
 ### MinIO — GHSA-jjjj-jwhf-8rgr / CVE-2025-62506
@@ -48,6 +53,7 @@ cache temporaires ont été supprimés après synthèse.
 | Image               | Critical | High | Décision locale                                               |
 | ------------------- | -------- | ---- | ------------------------------------------------------------- |
 | Application Next.js | 0        | 1    | `sharp` déjà suivi ; aucun traitement d’image autorisé        |
+| Outils DB/bootstrap | 0        | 3    | `sharp`/`postcss` déjà suivis ; image one-shot locale         |
 | Reverse proxy       | 0        | 0    | Nginx 1.31.3 / Alpine 3.24 retenu après remédiation           |
 | Stockage objet      | 1        | 22   | non exploitable dans le périmètre actuel ; production bloquée |
 | PostgreSQL          | 1        | 17   | avis portés par le bootstrap `gosu` ; production à réévaluer  |
@@ -92,8 +98,8 @@ remplacer MinIO avant la production.
 
 Les 17 avis high PostgreSQL sont majoritairement associés à la même bibliothèque standard de `gosu`;
 les autres concernent `c-ares` et `libcurl` de l’image Alpine. L’image officielle est verrouillée,
-PostgreSQL n’est pas publié sur l’hôte et aucun schéma ou client applicatif n’existe. Ces mesures
-réduisent l’exposition sans résoudre les avis.
+PostgreSQL n’est pas publié sur l’hôte et l’application utilise uniquement un compte runtime non
+superutilisateur avec privilèges limités. Ces mesures réduisent l’exposition sans résoudre les avis.
 
 ### Limites du scan
 
@@ -149,6 +155,26 @@ nouveau scan est obligatoire avant toute exposition, mise à jour d’image ou p
   [GHSA-r28c-9q8g-f849](https://github.com/advisories/GHSA-r28c-9q8g-f849).
 
 ## Dépendances de développement
+
+### `esbuild` 0.18.20 — GHSA-67mh-4wv8-2f99
+
+- **Introduction :** dépendance transitive de `drizzle-kit@0.31.10` via `@esbuild-kit/esm-loader` et
+  `@esbuild-kit/core-utils`.
+- **Plage affectée / correction proposée :** `<=0.24.2`. `npm audit fix --force` propose
+  `drizzle-kit@0.18.1`, ce qui est une rétrogradation incompatible et n’est pas appliqué.
+- **Exposition actuelle :** outillage local de migration/génération uniquement. Aucun serveur de
+  développement `esbuild` n’est exposé par l’application ou par Docker.
+- **Exposition future :** accrue si un outil de développement basé sur `esbuild` est exposé à un
+  navigateur ou à un réseau non fiable.
+- **Mesures compensatoires :** ne pas exposer les outils Drizzle ; utiliser `db:generate`,
+  `db:migrate` et `db:status` comme commandes locales explicites ; conserver les audits séparés de
+  `check` tant que l’avis reste ouvert.
+- **Blocage production :** non bloquant pour le runtime local actuel. Une chaîne CI distante ou un
+  service de migration exposé doit utiliser une version corrigée.
+- **Stratégie de mise à jour :** adopter une version stable compatible de Drizzle Kit qui ne tire
+  plus cette chaîne affectée, puis rejouer audits, migrations sur base vide et build Docker.
+- **Référence vérifiée :**
+  [GitHub Advisory Database](https://github.com/advisories/GHSA-67mh-4wv8-2f99).
 
 ### `brace-expansion` 1.1.16 — GHSA-mh99-v99m-4gvg
 

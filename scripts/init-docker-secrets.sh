@@ -89,3 +89,6 @@ create_secret() {
 create_secret "postgres-password"
 create_secret "redis-password"
 create_secret "object-storage-password"
+create_secret "postgres-app-password"
+create_secret "postgres-migration-password"
+create_secret "better-auth-secret"

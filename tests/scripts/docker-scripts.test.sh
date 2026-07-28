@@ -6,6 +6,7 @@ project_dir="$(CDPATH= cd -- "$(dirname "$0")/../.." && pwd)"
 temporary_parent="$project_dir/.tmp-tests"
 test_root=""
 test_count=0
+secret_names="postgres-password redis-password object-storage-password postgres-app-password postgres-migration-password better-auth-secret"
 
 fail() {
   echo "Docker script test failed: $1" >&2
@@ -51,7 +52,7 @@ run_secret_fixture() {
 assert_no_secret_output() {
   fixture_path="$1"
 
-  for secret_name in postgres-password redis-password object-storage-password; do
+  for secret_name in $secret_names; do
     if [ -f "$fixture_path/secrets/$secret_name" ] &&
       grep \
         -F \
@@ -67,7 +68,7 @@ assert_no_secret_output() {
 new_secret_fixture
 run_secret_fixture "$fixture_path"
 
-for secret_name in postgres-password redis-password object-storage-password; do
+for secret_name in $secret_names; do
   secret_path="$fixture_path/secrets/$secret_name"
   [ -f "$secret_path" ] || fail "normal creation did not produce $secret_name"
   [ ! -L "$secret_path" ] || fail "normal creation produced a symbolic link"
@@ -76,16 +77,16 @@ for secret_name in postgres-password redis-password object-storage-password; do
   grep -Eq '^[0-9a-f]{64}$' "$secret_path" || fail "normal creation did not use safe hexadecimal data"
 done
 assert_no_secret_output "$fixture_path"
-pass "creates three non-empty hexadecimal secrets with mode 600"
+pass "creates six non-empty hexadecimal secrets with mode 600"
 
 before_hashes="$(
-  for secret_name in postgres-password redis-password object-storage-password; do
+  for secret_name in $secret_names; do
     sha256sum "$fixture_path/secrets/$secret_name"
   done
 )"
 run_secret_fixture "$fixture_path"
 after_hashes="$(
-  for secret_name in postgres-password redis-password object-storage-password; do
+  for secret_name in $secret_names; do
     sha256sum "$fixture_path/secrets/$secret_name"
   done
 )"
@@ -155,13 +156,17 @@ new_wrapper_fixture() {
     echo "ADMIN_HTTP_PORT=8080"
     echo "APP_ENV=local"
     echo "APP_VERSION=0.1.0"
+    echo "BETTER_AUTH_BASE_URL=http://127.0.0.1:8080"
     echo "NEXT_PUBLIC_APP_NAME=Promptube Admin"
     echo "POSTGRES_DB=promptube_admin"
     echo "POSTGRES_USER=promptube_admin"
+    echo "POSTGRES_APP_USER=promptube_admin_app"
+    echo "POSTGRES_MIGRATION_USER=promptube_admin_migration"
+    echo "TRUSTED_ORIGINS=http://127.0.0.1:8080"
     echo "MINIO_ROOT_USER=promptube_admin_storage"
   } >"$wrapper_path/.env.docker"
 
-  for secret_name in postgres-password redis-password object-storage-password; do
+  for secret_name in $secret_names; do
     printf '%064d\n' 0 >"$wrapper_path/secrets/$secret_name"
     chmod 600 "$wrapper_path/secrets/$secret_name"
   done
