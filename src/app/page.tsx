@@ -1,9 +1,15 @@
 import { DashboardOverview } from "@/modules/dashboard/components/dashboard-overview";
+import { requireCompletedTwoFactor } from "@/server/auth/session";
 import { AdminShell } from "@/shared/components/admin-shell";
 
-export default function DashboardPage() {
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+export default async function DashboardPage() {
+  const current = await requireCompletedTwoFactor();
+
   return (
-    <AdminShell>
+    <AdminShell admin={current.admin}>
       <DashboardOverview />
     </AdminShell>
   );
