@@ -3,7 +3,8 @@ import "server-only";
 import packageMetadata from "../../../package.json";
 import { z } from "zod";
 
-const environmentNameSchema = z.enum(["development", "test", "production"]);
+const applicationEnvironmentSchema = z.enum(["development", "local", "test", "production"]);
+const nodeEnvironmentSchema = z.enum(["development", "test", "production"]);
 const applicationVersionSchema = z
   .string()
   .trim()
@@ -12,13 +13,13 @@ const applicationVersionSchema = z
   .regex(/^[0-9A-Za-z][0-9A-Za-z.+-]*$/);
 
 const serverEnvironmentSchema = z.object({
-  APP_ENV: environmentNameSchema.optional(),
+  APP_ENV: applicationEnvironmentSchema.optional(),
   APP_VERSION: applicationVersionSchema.optional(),
-  NODE_ENV: environmentNameSchema.optional(),
+  NODE_ENV: nodeEnvironmentSchema.optional(),
 });
 
 export type ServerEnvironment = Readonly<{
-  environment: z.infer<typeof environmentNameSchema>;
+  environment: z.infer<typeof applicationEnvironmentSchema>;
   version: string;
 }>;
 

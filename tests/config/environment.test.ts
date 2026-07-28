@@ -15,13 +15,25 @@ describe("server environment configuration", () => {
   it("accepts explicit valid application metadata", () => {
     expect(
       parseServerEnvironment({
-        APP_ENV: "production",
+        APP_ENV: "local",
         APP_VERSION: "1.4.0-rc.1",
-        NODE_ENV: "test",
+        NODE_ENV: "production",
       }),
     ).toEqual({
-      environment: "production",
+      environment: "local",
       version: "1.4.0-rc.1",
+    });
+  });
+
+  it("keeps the optimized Node mode separate from the deployment environment", () => {
+    expect(
+      parseServerEnvironment({
+        APP_ENV: "local",
+        NODE_ENV: "production",
+      }),
+    ).toEqual({
+      environment: "local",
+      version: "0.1.0",
     });
   });
 

@@ -2,7 +2,7 @@ name: promptube_admin
 
 services:
   admin-promptube-reverse-proxy:
-    image: admin-promptube-reverse-proxy:1.29.4
+    image: admin-promptube-reverse-proxy:1.31.3
     build:
       context: ./docker/proxy
     depends_on:
@@ -34,15 +34,8 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:?NEXT_PUBLIC_APP_NAME is required}
-    depends_on:
-      admin-promptube-postgres:
-        condition: service_healthy
-      admin-promptube-redis:
-        condition: service_healthy
-      admin-promptube-object-storage:
-        condition: service_healthy
     environment:
-      APP_ENV: production
+      APP_ENV: ${APP_ENV:?APP_ENV is required}
       APP_VERSION: ${APP_VERSION:?APP_VERSION is required}
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:?NEXT_PUBLIC_APP_NAME is required}
       NODE_ENV: production
@@ -50,7 +43,6 @@ services:
       - "3000"
     networks:
       - frontend
-      - backend
     restart: unless-stopped
     read_only: true
     tmpfs:
@@ -145,7 +137,7 @@ services:
       start_period: 10s
 
   admin-promptube-object-storage:
-    image: admin-promptube-object-storage:2025-09-07
+    image: admin-promptube-object-storage:RELEASE.2025-10-15T17-29-55Z
     build:
       context: ./docker/object-storage
     command: ["server", "/data", "--address", ":9000", "--console-address", ":9001"]
@@ -171,7 +163,7 @@ services:
     security_opt:
       - no-new-privileges:true
     healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:9000/minio/health/live"]
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:9000/minio/health/live"]
       interval: 10s
       timeout: 5s
       retries: 10
