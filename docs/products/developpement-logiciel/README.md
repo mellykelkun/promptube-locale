@@ -15,7 +15,12 @@
 Ce bundle rassemble trois modules complémentaires destinés à encadrer le cycle de création d’un
 projet logiciel avec une intelligence artificielle.
 
-Il fournit une méthode continue :
+### Promesse du bundle
+
+Encadrer tout le cycle de création d’un logiciel avec une IA, de la conception à la décision de
+livraison, tout en maintenant les décisions, les modifications et les preuves sous contrôle humain.
+
+Le bundle fournit une méthode continue :
 
 1. concevoir le projet avant le code ;
 2. construire le projet avec discipline ;

@@ -59,11 +59,12 @@ sans plan de correction.
 
 ## 4. Promesse
 
-Transformer l’IA en auditeur défensif chargé de déterminer, avec des preuves vérifiables, si un
-projet est prêt ou non à être livré.
+Déterminer, à partir de preuves vérifiables, si un logiciel est prêt à être livré, quels risques
+subsistent et quelles corrections restent nécessaires.
 
 Le module doit produire des constats hiérarchisés, expliquer leurs conséquences, proposer un plan de
-correction et vérifier les remédiations sans masquer les risques résiduels.
+correction et vérifier les remédiations sans masquer les risques résiduels. Il ne peut jamais
+accepter un risque à la place du propriétaire.
 
 ## 5. Public cible
 

@@ -49,9 +49,8 @@ aux décisions improvisées par l’IA.
 
 ## 4. Promesse
 
-Transformer une idée de produit logiciel en un dossier de conception structuré, exploitable et
-vérifiable, afin de commencer l’implémentation avec des frontières et des critères clairement
-définis.
+Transformer une idée de logiciel en un dossier de conception structuré, exploitable et vérifiable
+avant le début de l’implémentation.
 
 Le module doit aider l’utilisateur à comprendre et décider. Il ne doit pas remplacer automatiquement
 les décisions du propriétaire du projet.

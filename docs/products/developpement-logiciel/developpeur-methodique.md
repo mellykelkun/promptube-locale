@@ -54,11 +54,11 @@ régressions et le coût des corrections.
 
 ## 4. Promesse
 
-Aider l’utilisateur à développer avec une IA sans perdre le contrôle du dépôt, de l’architecture, de
-la sécurité ou de la qualité.
+Encadrer chaque changement réalisé avec une IA, depuis l’inspection du projet jusqu’aux preuves de
+préparation à la fusion, sans perdre le contrôle du périmètre, de la sécurité ou de la qualité.
 
-Le module doit guider chaque changement depuis l’inspection initiale jusqu’au rapport de validation,
-avec un périmètre limité, des tests et un historique Git compréhensible.
+Le module doit guider chaque changement avec un périmètre limité, des tests et un historique Git
+compréhensible. La validation finale reste sous la responsabilité de l’utilisateur.
 
 ## 5. Public cible
 
