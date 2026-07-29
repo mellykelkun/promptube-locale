@@ -44,11 +44,11 @@ tests et le plan de livraison.
 Ce module impose l’inspection, le contrôle du périmètre, la sécurité, les tests, la discipline Git
 et la production de preuves.
 
-### Promptube — Auditeur logiciel et Release Readiness
+### Promptube — Auditeur logiciel et préparation à la livraison
 
 - **Position :** après une implémentation significative et avant la production
 - **Rôle :** déterminer si le projet est prêt à être livré
-- **Fiche :** [auditeur-release-readiness.md](auditeur-release-readiness.md)
+- **Fiche :** [auditeur-preparation-livraison.md](auditeur-preparation-livraison.md)
 
 Ce module collecte des preuves, classe les risques, vérifie les mécanismes critiques et produit un
 verdict défensif de préparation à la livraison.
@@ -66,7 +66,7 @@ Développeur méthodique
       ↓
 Implémentation contrôlée
       ↓
-Auditeur logiciel et Release Readiness
+Auditeur logiciel et préparation à la livraison
       ↓
 READY | READY_WITH_ACCEPTED_RISKS | NOT_READY
 ```
@@ -149,7 +149,7 @@ Il ne doit pas :
 - élargir le périmètre sans validation ;
 - prononcer seul le verdict final de mise en production.
 
-### Auditeur logiciel et Release Readiness
+### Auditeur logiciel et préparation à la livraison
 
 Il vérifie les preuves et évalue la préparation à la livraison.
 

@@ -142,7 +142,7 @@ La version initiale ne doit pas :
 - modifier le système ou d’autres projets par commodité.
 
 La conception initiale relève du module Promptube — Architecte de projet logiciel. L’audit final
-relève du module Promptube — Auditeur logiciel et Release Readiness.
+relève du module Promptube — Auditeur logiciel et préparation à la livraison.
 
 ## 10. Arborescence ZIP proposée
 

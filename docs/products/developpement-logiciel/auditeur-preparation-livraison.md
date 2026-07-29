@@ -1,4 +1,4 @@
-# Fiche produit — Promptube Auditeur logiciel et Release Readiness
+# Fiche produit — Promptube Auditeur logiciel et préparation à la livraison
 
 ## Métadonnées
 
@@ -14,14 +14,14 @@
 
 ## 1. Nom commercial
 
-**Promptube — Auditeur logiciel et Release Readiness**
+**Promptube — Auditeur logiciel et préparation à la livraison**
 
 Ce nom est retenu pour la version de travail `0.1.0`. Il devra être validé avec l’ensemble des trois
 fiches avant le passage au statut `APPROVED`.
 
 ## 2. Résumé
 
-Promptube — Auditeur logiciel et Release Readiness est un module professionnel qui encadre
+Promptube — Auditeur logiciel et préparation à la livraison est un module professionnel qui encadre
 l’utilisation d’une intelligence artificielle pour examiner un projet logiciel avant sa livraison ou
 sa mise en production.
 
@@ -167,7 +167,7 @@ corrections relèvent du module Promptube — Développeur méthodique.
 ## 10. Arborescence ZIP proposée
 
 ```text
-promptube-auditeur-release-readiness/
+promptube-auditeur-preparation-livraison/
 ├── README.md
 ├── instructions/
 │   ├── role-defensive-auditor.md
@@ -240,7 +240,7 @@ données sensibles et procédures de rollback.
 Examiner les images, versions, utilisateurs, capabilities, systèmes de fichiers, secrets, ports,
 réseaux, volumes, healthchecks et frontières entre services.
 
-### Release Readiness
+### Préparation à la livraison
 
 Consolider les preuves, vérifier les critères de livraison, classer les blocages, documenter les
 risques acceptés et produire le verdict final.

@@ -20,7 +20,7 @@
 ### Définition du bundle produit initial
 
 - Ajout des fiches `DRAFT` des trois premiers modules de développement logiciel : Architecte de
-  projet logiciel, Développeur méthodique et Auditeur logiciel et Release Readiness.
+  projet logiciel, Développeur méthodique et Auditeur logiciel et préparation à la livraison.
 - Ajout du contrat documentaire commun définissant la structure, le cycle de validation, le
   versionnage et les critères d’approbation des fiches produit.
 - Documentation du bundle « Concevoir, construire, vérifier », de l’enchaînement des trois modules,

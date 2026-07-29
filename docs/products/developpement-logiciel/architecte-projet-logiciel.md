@@ -130,7 +130,7 @@ La version initiale ne prétend pas concevoir complètement :
 - l’audit final de mise en production.
 
 L’implémentation relève du module Promptube — Développeur méthodique. L’audit final relève du module
-Promptube — Auditeur logiciel et Release Readiness.
+Promptube — Auditeur logiciel et préparation à la livraison.
 
 ## 10. Arborescence ZIP proposée
 

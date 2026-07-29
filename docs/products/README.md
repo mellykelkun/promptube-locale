@@ -231,13 +231,13 @@ Le premier bundle Promptube couvre le cycle logiciel suivant :
 
 1. concevoir avec Promptube — Architecte de projet logiciel ;
 2. construire avec Promptube — Développeur méthodique ;
-3. vérifier avec Promptube — Auditeur logiciel et Release Readiness.
+3. vérifier avec Promptube — Auditeur logiciel et préparation à la livraison.
 
 Fiches actuelles :
 
 - `developpement-logiciel/architecte-projet-logiciel.md` ;
 - `developpement-logiciel/developpeur-methodique.md` ;
-- `developpement-logiciel/auditeur-release-readiness.md`.
+- `developpement-logiciel/auditeur-preparation-livraison.md`.
 
 Les trois modules doivent rester utilisables séparément. Leur combinaison forme un parcours cohérent
 de conception, d’implémentation et de vérification.
