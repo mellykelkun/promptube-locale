@@ -7,6 +7,7 @@
 - **Portée :** fiches produit Promptube
 - **Langue initiale :** français
 - **Catégorie initiale :** Développement logiciel
+- **Sous-catégorie initiale :** Ingénierie logicielle assistée par IA
 
 ## 1. Objectif
 
@@ -55,6 +56,7 @@ Chaque fiche doit commencer par les informations suivantes :
 - version de la fiche ;
 - statut documentaire ;
 - catégorie ;
+- sous-catégorie ;
 - position dans le cycle de travail ;
 - langue initiale ;
 - format de distribution prévu ;

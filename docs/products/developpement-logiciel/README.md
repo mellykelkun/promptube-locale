@@ -6,6 +6,7 @@
 - **Version documentaire :** `0.1.0`
 - **Statut :** `DRAFT`
 - **Catégorie :** Développement logiciel
+- **Sous-catégorie :** Ingénierie logicielle assistée par IA
 - **Nombre de modules :** 3
 - **Langue initiale :** français
 
@@ -69,6 +70,10 @@ Auditeur logiciel et Release Readiness
       ↓
 READY | READY_WITH_ACCEPTED_RISKS | NOT_READY
 ```
+
+Le verdict `READY_WITH_ACCEPTED_RISKS` ne signifie pas que l’Auditeur accepte lui-même les risques.
+Il n’est valable que lorsque le propriétaire ou une personne autorisée a explicitement accepté les
+risques résiduels concernés.
 
 ## 4. Utilisation indépendante
 
@@ -184,7 +189,8 @@ Une modification apportée à un module doit être vérifiée par rapport :
 
 ## 11. Validation utilisateur du bundle
 
-Avant approbation, le bundle doit être évalué sur au moins un projet représentatif.
+Avant toute publication commerciale, le bundle doit être évalué sur au moins un projet
+représentatif.
 
 La validation doit vérifier :
 

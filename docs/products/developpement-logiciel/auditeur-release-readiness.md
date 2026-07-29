@@ -6,6 +6,7 @@
 - **Version de la fiche :** `0.1.0`
 - **Statut :** `DRAFT`
 - **Catégorie :** Développement logiciel
+- **Sous-catégorie :** Ingénierie logicielle assistée par IA
 - **Position dans le cycle :** après une implémentation significative et avant la production
 - **Langue initiale :** français
 - **Format prévu :** archive ZIP privée composée principalement de fichiers Markdown
@@ -117,9 +118,13 @@ autorisés.
 L’absence de preuve doit être présentée comme une limite ou un blocage, jamais comme une réussite
 implicite.
 
+Le verdict `READY_WITH_ACCEPTED_RISKS` ne peut être utilisé que si chaque risque résiduel concerné a
+été explicitement accepté par le propriétaire ou par une personne autorisée, avec une justification
+et un responsable identifiés. L’auditeur ne peut jamais accepter un risque à leur place.
+
 ## 8. Périmètre
 
-La version `1.x` cible principalement :
+La première version distribuable envisagée (`1.x`) cible principalement :
 
 - les applications web ;
 - les MVP full-stack ;

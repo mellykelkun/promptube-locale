@@ -6,6 +6,7 @@
 - **Version de la fiche :** `0.1.0`
 - **Statut :** `DRAFT`
 - **Catégorie :** Développement logiciel
+- **Sous-catégorie :** Ingénierie logicielle assistée par IA
 - **Position dans le cycle :** avant l’implémentation
 - **Langue initiale :** français
 - **Format prévu :** archive ZIP privée composée principalement de fichiers Markdown
@@ -102,7 +103,7 @@ Aucune stack technique ne doit être imposée avant l’analyse du besoin.
 
 ## 8. Périmètre
 
-La version `1.x` cible principalement :
+La première version distribuable envisagée (`1.x`) cible principalement :
 
 - les applications web ;
 - les MVP full-stack ;
