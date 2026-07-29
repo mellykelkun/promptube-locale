@@ -9,6 +9,7 @@
 - **Contenu initial :** fichiers Markdown et manifeste JSON
 - **Encodage textuel :** UTF-8
 - **Algorithme d’intégrité :** SHA-256
+- **Fondations de conception validées par le propriétaire :** 2026-07-29
 
 ## 1. Objectif
 
@@ -257,6 +258,9 @@ node_modules/
 
 Les limites suivantes sont des valeurs initiales à confirmer par des tests représentatifs avant le
 passage du contrat à `APPROVED`.
+
+Le propriétaire a validé ces valeurs comme base de conception initiale le 29 juillet 2026. Leur
+confirmation technique sur des paquets représentatifs reste obligatoire.
 
 | Élément                                  | Limite provisoire |
 | ---------------------------------------- | ----------------- |
@@ -545,7 +549,7 @@ Ces éléments nécessitent des phases et validations séparées.
 
 Les décisions suivantes restent ouvertes :
 
-- confirmation des limites numériques ;
+- validation technique des limites numériques sur des paquets représentatifs ;
 - format exact du manifeste ;
 - règle de canonicalisation des fichiers ;
 - bibliothèque ZIP retenue ;
