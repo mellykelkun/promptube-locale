@@ -17,6 +17,19 @@
   mais peut disposer d’un remote et être poussé uniquement sur demande explicite du propriétaire,
   après contrôles locaux réussis.
 
+### Définition du bundle produit initial
+
+- Ajout des fiches `DRAFT` des trois premiers modules de développement logiciel : Architecte de
+  projet logiciel, Développeur méthodique et Auditeur logiciel et Release Readiness.
+- Ajout du contrat documentaire commun définissant la structure, le cycle de validation, le
+  versionnage et les critères d’approbation des fiches produit.
+- Documentation du bundle « Concevoir, construire, vérifier », de l’enchaînement des trois modules,
+  de leur utilisation indépendante et de leurs frontières.
+- Séparation explicite entre les fiches de conception versionnées et les futurs dossiers de modules
+  distribuables sous forme d’archives ZIP privées.
+- Aucun upload, manifeste, stockage, migration, paiement, publication ou changement applicatif
+  ajouté pendant cette phase.
+
 ## 2026-07-28
 
 ### Catalogue local admin
