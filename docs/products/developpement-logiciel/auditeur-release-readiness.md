@@ -4,7 +4,7 @@
 
 - **Identifiant provisoire :** `promptube-software-auditor`
 - **Version de la fiche :** `0.1.0`
-- **Statut :** `DRAFT`
+- **Statut :** `IN_REVIEW`
 - **Catégorie :** Développement logiciel
 - **Sous-catégorie :** Ingénierie logicielle assistée par IA
 - **Position dans le cycle :** après une implémentation significative et avant la production

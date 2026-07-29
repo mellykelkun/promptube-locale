@@ -29,6 +29,9 @@
   distribuables sous forme d’archives ZIP privées.
 - Aucun upload, manifeste, stockage, migration, paiement, publication ou changement applicatif
   ajouté pendant cette phase.
+- Passage du contrat documentaire, du bundle et des trois fiches produit au statut `IN_REVIEW` après
+  revue croisée de leur structure, de leur taxonomie, de leurs frontières et de leurs règles de
+  validation.
 
 ## 2026-07-28
 

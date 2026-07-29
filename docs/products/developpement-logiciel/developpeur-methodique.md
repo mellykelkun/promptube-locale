@@ -4,7 +4,7 @@
 
 - **Identifiant provisoire :** `promptube-methodical-developer`
 - **Version de la fiche :** `0.1.0`
-- **Statut :** `DRAFT`
+- **Statut :** `IN_REVIEW`
 - **Catégorie :** Développement logiciel
 - **Sous-catégorie :** Ingénierie logicielle assistée par IA
 - **Position dans le cycle :** pendant l’implémentation
