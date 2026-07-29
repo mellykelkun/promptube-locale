@@ -353,13 +353,15 @@ Les rapports `coverage/`, `.next/`, `node_modules/` et les caches ne sont jamais
 
 ## Règles Git
 
-Ce dossier est un dépôt Git local indépendant :
+Ce dossier est un dépôt Git indépendant de `promptube-prod` :
 
-- aucun remote ;
+- un remote Git peut exister uniquement après décision explicite du propriétaire ;
 - `main` est la branche stable locale ;
 - `develop` est la branche d’intégration locale ;
 - le travail passe par `feature/*`, `fix/*`, `chore/*` ou `security/*` ;
-- les fusions sont locales et aucun push n’est effectué ;
+- les fusions sont locales avant publication ;
+- aucun push n’est effectué sans demande explicite du propriétaire et sans contrôles locaux réussis
+  ;
 - le dépôt ne doit jamais inclure `promptube-prod` ni les documents du dossier parent.
 
 Les branches de travail ne sont fusionnées dans `develop` qu’après validation complète, par merge

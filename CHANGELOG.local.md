@@ -1,5 +1,22 @@
 # Changelog local
 
+## 2026-07-29
+
+### Thème classique et publication Git distante
+
+- Ajout d’un thème visuel d’administration inspiré des logiciels professionnels Microsoft 2000–2003
+  : fenêtres, panneaux, barres de titre, barres d’outils, boutons relief, tableaux denses et
+  formulaires compacts.
+- Ajout des composants visuels internes `WindowPanel`, `TitleBar`, `Toolbar`, `ClassicButton`,
+  `ClassicInput`, `ClassicSelect`, `ClassicTable`, `StatusBar`, `Dialog`, `Tabs` et `FieldGroup`.
+- Alignement visuel du tableau de bord, du catalogue, de l’audit, des écrans d’authentification, du
+  TOTP, de la page 404 et des états d’erreur, sans modifier la logique métier, l’authentification,
+  les routes, les migrations ou les procédures Docker.
+- Ajout de tests de rendu essentiels pour le shell classique et les composants visuels.
+- Mise à jour des règles Git documentées : le dépôt admin reste indépendant de `promptube-prod`,
+  mais peut disposer d’un remote et être poussé uniquement sur demande explicite du propriétaire,
+  après contrôles locaux réussis.
+
 ## 2026-07-28
 
 ### Catalogue local admin
