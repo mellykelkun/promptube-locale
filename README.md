@@ -367,6 +367,17 @@ Ce dossier est un dépôt Git indépendant de `promptube-prod` :
 Les branches de travail ne sont fusionnées dans `develop` qu’après validation complète, par merge
 local explicite. `main` n’est jamais utilisée pour le développement direct.
 
+## Documentation produit
+
+Les documents sous `docs/products/` définissent les produits Promptube avant la construction de
+leurs paquets distribuables.
+
+- [Contrat documentaire des produits Promptube](docs/products/README.md)
+- [Bundle initial — Développement logiciel](docs/products/developpement-logiciel/README.md)
+
+Ces documents sont des cahiers des charges versionnés. Ils ne contiennent pas les modules
+distribuables et n’activent aucun upload, stockage, ZIP ou mécanisme de publication.
+
 ## Fonctionnalités absentes
 
 Cette phase n’ajoute volontairement aucun :
