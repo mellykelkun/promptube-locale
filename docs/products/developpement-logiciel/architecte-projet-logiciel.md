@@ -4,7 +4,7 @@
 
 - **Identifiant provisoire :** `promptube-software-architect`
 - **Version de la fiche :** `0.1.0`
-- **Statut :** `IN_REVIEW`
+- **Statut :** `APPROVED`
 - **Catégorie :** Développement logiciel
 - **Sous-catégorie :** Ingénierie logicielle assistée par IA
 - **Position dans le cycle :** avant l’implémentation

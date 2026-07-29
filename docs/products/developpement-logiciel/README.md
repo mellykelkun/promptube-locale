@@ -4,7 +4,7 @@
 
 - **Nom de travail :** Promptube — Concevoir, construire, vérifier
 - **Version documentaire :** `0.1.0`
-- **Statut :** `IN_REVIEW`
+- **Statut :** `APPROVED`
 - **Catégorie :** Développement logiciel
 - **Sous-catégorie :** Ingénierie logicielle assistée par IA
 - **Nombre de modules :** 3

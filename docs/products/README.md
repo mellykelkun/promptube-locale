@@ -3,7 +3,7 @@
 ## Métadonnées
 
 - **Version du contrat :** `0.1.0`
-- **Statut :** `IN_REVIEW`
+- **Statut :** `APPROVED`
 - **Portée :** fiches produit Promptube
 - **Langue initiale :** français
 - **Catégorie initiale :** Développement logiciel

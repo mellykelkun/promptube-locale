@@ -32,6 +32,9 @@
 - Passage du contrat documentaire, du bundle et des trois fiches produit au statut `IN_REVIEW` après
   revue croisée de leur structure, de leur taxonomie, de leurs frontières et de leurs règles de
   validation.
+- Approbation par le propriétaire de la version documentaire `0.1.0` du contrat commun, du bundle et
+  des trois fiches produit comme base de conception, sans autoriser la publication, le stockage ou
+  la distribution.
 
 ## 2026-07-28
 
