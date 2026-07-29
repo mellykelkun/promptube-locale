@@ -35,6 +35,7 @@ structure leur collaboration avec l’IA.
 
 - **Position :** avant l’implémentation
 - **Rôle :** transformer une idée en plan logiciel exploitable
+- **Valeur commerciale :** réduire les décisions manquantes et les réécritures avant le code
 - **Fiche :** [architecte-projet-logiciel.md](architecte-projet-logiciel.md)
 
 Ce module clarifie le problème, le périmètre, les règles métier, l’architecture, les risques, les
@@ -44,6 +45,8 @@ tests et le plan de livraison.
 
 - **Position :** pendant l’implémentation
 - **Rôle :** encadrer les changements réalisés avec l’IA
+- **Valeur commerciale :** réduire les changements incontrôlés, les régressions et la perte de
+  maîtrise pendant l’implémentation
 - **Fiche :** [developpeur-methodique.md](developpeur-methodique.md)
 
 Ce module impose l’inspection, le contrôle du périmètre, la sécurité, les tests, la discipline Git
@@ -53,6 +56,8 @@ et la production de preuves.
 
 - **Position :** après une implémentation significative et avant la production
 - **Rôle :** déterminer si le projet est prêt à être livré
+- **Valeur commerciale :** réduire le risque de livrer un logiciel insuffisamment vérifié et rendre
+  la décision de livraison explicite
 - **Fiche :** [auditeur-preparation-livraison.md](auditeur-preparation-livraison.md)
 
 Ce module collecte des preuves, classe les risques, vérifie les mécanismes critiques et produit un
@@ -82,7 +87,7 @@ risques résiduels concernés.
 
 ## 4. Utilisation indépendante
 
-Chaque module doit rester utilisable séparément.
+Chaque module doit rester commercialisable et utilisable séparément.
 
 - l’Architecte peut être utilisé pour cadrer un projet qui sera ensuite développé sans le module
   Développeur ;
