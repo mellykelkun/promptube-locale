@@ -1,5 +1,29 @@
 # Changelog local
 
+## 2026-07-30
+
+### Contrats techniques des paquets et manifestes
+
+- Ajout du contrat technique initial des paquets de modules Promptube : structure de l’archive ZIP
+  privée, fichiers autorisés, règles de chemin, limites de taille, protection contre les ZIP bombs,
+  inventaire et empreintes SHA-256.
+- Ajout du contrat versionné de `promptube-module.json`, séparant la version du manifeste de celle
+  du module et définissant l’identité, le classement dans le catalogue, le point d’entrée,
+  l’inventaire, la compatibilité testée et la licence.
+- Adoption de JSON Schema Draft 2020-12, Semantic Versioning 2.0.0, BCP 47 et du RFC 8785 comme
+  fondations normatives initiales.
+- Validation par le propriétaire des fondations de conception du paquet et du manifeste, sans faire
+  passer les contrats techniques au statut `APPROVED`.
+- Ajout du schéma initial `docs/products/schemas/promptube-module.schema.json`, avec objets fermés,
+  propriétés obligatoires, limites structurelles, chemins contrôlés et références exclusivement
+  internes.
+- Compilation réussie du schéma avec Ajv `8.20.0` en mode strict et `ajv-formats` `3.0.1`, puis
+  validation d’un manifeste structurellement valide et de treize scénarios ciblés.
+- Les dépendances Ajv utilisées pour ce contrôle ont été installées dans un dossier temporaire et
+  n’ont modifié ni `package.json`, ni `package-lock.json`, ni les dépendances du projet.
+- Aucun validateur applicatif, upload, stockage, migration, manifeste réel de produit, archive
+  commerciale ou mécanisme de publication n’est ajouté pendant cette phase.
+
 ## 2026-07-29
 
 ### Thème classique et publication Git distante

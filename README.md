@@ -369,14 +369,20 @@ local explicite. `main` n’est jamais utilisée pour le développement direct.
 
 ## Documentation produit
 
-Les documents sous `docs/products/` définissent les produits Promptube avant la construction de
-leurs paquets distribuables.
+Les documents sous `docs/products/` définissent les produits Promptube et les contrats techniques
+applicables à leurs futurs paquets distribuables.
 
 - [Contrat documentaire des produits Promptube](docs/products/README.md)
 - [Bundle initial — Développement logiciel](docs/products/developpement-logiciel/README.md)
+- [Contrat technique des paquets de modules](docs/products/contrat-paquet-module.md)
+- [Contrat versionné du manifeste](docs/products/contrat-manifeste-module.md)
+- [Schéma JSON initial du manifeste](docs/products/schemas/promptube-module.schema.json)
 
-Ces documents sont des cahiers des charges versionnés. Ils ne contiennent pas les modules
-distribuables et n’activent aucun upload, stockage, ZIP ou mécanisme de publication.
+Les fiches produit décrivent les modules attendus. Les contrats et le schéma définissent la
+structure technique que devront respecter leurs futurs dossiers et archives privées.
+
+Ces éléments n’intègrent aucun module distribuable et n’activent aucun upload, stockage, ZIP,
+paiement ou mécanisme de publication dans l’application.
 
 ## Fonctionnalités absentes
 
