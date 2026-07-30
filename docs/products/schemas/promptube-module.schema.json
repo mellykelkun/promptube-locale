@@ -1,0 +1,385 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "L'identifiant canonique $id est volontairement omis tant que son URI définitive n'est pas approuvée. Ce schéma couvre la structure JSON ; les contrôles lexicaux, archivistiques et métier décrits par le contrat restent obligatoires.",
+  "title": "Manifeste d’un module Promptube",
+  "description": "Schéma initial du fichier promptube-module.json. Il ne valide pas à lui seul l’archive ZIP, le catalogue, les empreintes réelles, l’ordre de l’inventaire ou l’absence de propriétés JSON dupliquées.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifestVersion", "module", "files", "compatibility", "license"],
+  "properties": {
+    "manifestVersion": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "Version du contrat structurel du manifeste, indépendante de la version du module."
+    },
+    "module": {
+      "$ref": "#/$defs/module"
+    },
+    "files": {
+      "type": "array",
+      "description": "Inventaire exhaustif, trié et sans collision de tous les fichiers distribuables, à l’exception de promptube-module.json. L’unicité des chemins, leur ordre, leur taille réelle et leurs empreintes doivent aussi être contrôlés par le validateur métier.",
+      "minItems": 4,
+      "maxItems": 200,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/file"
+      },
+      "contains": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {
+          "path": {
+            "const": "README.md"
+          }
+        }
+      },
+      "minContains": 1,
+      "maxContains": 1,
+      "allOf": [
+        {
+          "contains": {
+            "type": "object",
+            "required": ["path"],
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^instructions/"
+              }
+            }
+          },
+          "minContains": 1,
+          "type": "array"
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["path"],
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^rules/"
+              }
+            }
+          },
+          "minContains": 1,
+          "type": "array"
+        },
+        {
+          "contains": {
+            "type": "object",
+            "required": ["path"],
+            "properties": {
+              "path": {
+                "type": "string",
+                "pattern": "^workflows/"
+              }
+            }
+          },
+          "minContains": 1,
+          "type": "array"
+        }
+      ]
+    },
+    "compatibility": {
+      "$ref": "#/$defs/compatibility"
+    },
+    "license": {
+      "$ref": "#/$defs/license"
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "description": "Identifiant technique ASCII stable. L’unicité et la correspondance avec le catalogue sont des contrôles métier.",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$",
+      "allOf": [
+        {
+          "not": {
+            "pattern": "--",
+            "type": "string"
+          }
+        },
+        {
+          "not": {
+            "pattern": "^[0-9]+$",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "slug": {
+      "type": "string",
+      "description": "Slug ASCII stable sans version.",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$",
+      "not": {
+        "pattern": "--",
+        "type": "string"
+      }
+    },
+    "safeText": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^(?!\\s)(?!.*\\s$)[^\\u0000-\\u001F\\u007F]+$"
+    },
+    "semverWithoutBuildMetadata": {
+      "type": "string",
+      "description": "Version SemVer 2.0.0 sans métadonnée de construction. Les préversions restent autorisées ; la politique de publication est contrôlée séparément.",
+      "minLength": 5,
+      "maxLength": 128,
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?$"
+    },
+    "languageTag": {
+      "type": "string",
+      "description": "Sous-ensemble canonique initial de BCP 47 couvrant notamment fr, fr-CI et les variantes usuelles. Une bibliothèque BCP 47 doit effectuer la validation métier complète.",
+      "minLength": 2,
+      "maxLength": 35,
+      "pattern": "^[a-z]{2,3}(?:-[A-Z][a-z]{3})?(?:-(?:[A-Z]{2}|[0-9]{3}))?(?:-(?:[a-z0-9]{5,8}|[0-9][a-z0-9]{3}))*$"
+    },
+    "module": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "slug",
+        "name",
+        "version",
+        "language",
+        "category",
+        "subcategory",
+        "entrypoint"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "slug": {
+          "$ref": "#/$defs/slug"
+        },
+        "name": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/safeText"
+            },
+            {
+              "maxLength": 160,
+              "type": "string"
+            }
+          ],
+          "description": "Nom approuvé du module. La correspondance exacte avec la fiche produit et le catalogue est un contrôle métier."
+        },
+        "version": {
+          "$ref": "#/$defs/semverWithoutBuildMetadata"
+        },
+        "language": {
+          "$ref": "#/$defs/languageTag"
+        },
+        "category": {
+          "$ref": "#/$defs/slug"
+        },
+        "subcategory": {
+          "$ref": "#/$defs/slug"
+        },
+        "entrypoint": {
+          "type": "string",
+          "const": "README.md"
+        }
+      }
+    },
+    "filePath": {
+      "type": "string",
+      "description": "Chemin Markdown autorisé par le contrat du paquet. La profondeur, la longueur en octets, les noms réservés, les collisions et la structure réelle de l’archive restent des contrôles métier.",
+      "minLength": 9,
+      "maxLength": 240,
+      "pattern": "^(?!.*--)(?:README\\.md|(?:instructions|rules|workflows|examples|documentation)/(?:[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?/)*[a-z0-9](?:[a-z0-9-]{0,75}[a-z0-9])?\\.md)$"
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "size", "sha256"],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/filePath"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576,
+          "description": "Taille exacte en octets du fichier décompressé. La représentation lexicale JSON et la taille réelle doivent être vérifiées hors du schéma."
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$",
+          "description": "Empreinte SHA-256 en hexadécimal minuscule calculée sur les octets exacts du fichier."
+        }
+      }
+    },
+    "capability": {
+      "type": "string",
+      "description": "Identifiant d’une capacité figurant dans la future liste normative. L’appartenance à cette liste est un contrôle métier tant que l’énumération n’est pas approuvée.",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$",
+      "not": {
+        "pattern": "--",
+        "type": "string"
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requiredCapabilities", "testedEnvironments"],
+      "properties": {
+        "requiredCapabilities": {
+          "type": "array",
+          "description": "Liste unique et triée de capacités. L’ordre et l’appartenance à l’énumération normative sont contrôlés par le validateur métier.",
+          "minItems": 0,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/capability"
+          }
+        },
+        "testedEnvironments": {
+          "type": "array",
+          "description": "Environnements réellement testés. Un tableau vide est autorisé pour une version de travail interne, mais pas nécessairement pour une publication commerciale.",
+          "minItems": 0,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/testedEnvironment"
+          }
+        }
+      }
+    },
+    "testedEnvironment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider", "model", "interface", "testedAt", "result", "limitations"],
+      "properties": {
+        "provider": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/safeText"
+            },
+            {
+              "maxLength": 128,
+              "type": "string"
+            }
+          ]
+        },
+        "model": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/safeText"
+            },
+            {
+              "maxLength": 160,
+              "type": "string"
+            }
+          ]
+        },
+        "interface": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/safeText"
+            },
+            {
+              "maxLength": 128,
+              "type": "string"
+            }
+          ]
+        },
+        "testedAt": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])$",
+          "description": "Date civile de la preuve de test. Le validateur doit activer l’assertion du format date ou appliquer une validation calendaire équivalente."
+        },
+        "result": {
+          "type": "string",
+          "enum": ["PASS", "PASS_WITH_LIMITATIONS", "FAIL"]
+        },
+        "limitations": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/safeText"
+              },
+              {
+                "maxLength": 500,
+                "type": "string"
+              }
+            ]
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "result": {
+                "const": "PASS"
+              }
+            },
+            "required": ["result"],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "limitations": {
+                "maxItems": 0,
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "result": {
+                "enum": ["PASS_WITH_LIMITATIONS", "FAIL"]
+              }
+            },
+            "required": ["result"],
+            "type": "object"
+          },
+          "then": {
+            "properties": {
+              "limitations": {
+                "minItems": 1,
+                "type": "array"
+              }
+            },
+            "type": "object"
+          }
+        }
+      ]
+    },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "version"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/slug"
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,62}[A-Za-z0-9])?$",
+          "description": "Version de la politique de licence approuvée. Sa valeur doit être reconnue par le validateur métier."
+        }
+      }
+    }
+  }
+}
