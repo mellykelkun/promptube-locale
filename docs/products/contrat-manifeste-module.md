@@ -13,6 +13,7 @@
 - **Langues :** étiquettes BCP 47
 - **Canonicalisation prévue :** JSON Canonicalization Scheme, RFC 8785
 - **Algorithme d’intégrité :** SHA-256
+- **Fondations de conception validées par le propriétaire :** 2026-07-30
 
 ## 1. Objectif
 
@@ -251,6 +252,23 @@ confirmer avant la création du schéma définitif.
 Aucune propriété inconnue ne doit être acceptée.
 
 Le futur schéma doit utiliser `additionalProperties: false` pour chaque objet fermé.
+
+Le propriétaire a validé le 30 juillet 2026 les cinq fondations suivantes :
+
+1. le fichier porte exactement le nom `promptube-module.json` et utilise du JSON strict encodé en
+   UTF-8 sans BOM ;
+2. sa structure initiale contient `manifestVersion`, `module`, `files`, `compatibility` et
+   `license`, sans propriété inconnue ;
+3. l’inventaire contient tous les fichiers distribuables sauf le manifeste lui-même, avec leur
+   taille exacte et leur empreinte SHA-256 ;
+4. les normes retenues sont Semantic Versioning 2.0.0, BCP 47, JSON Schema Draft 2020-12 et le RFC
+   8785 ;
+5. les informations d’identité et de classement doivent correspondre au contexte sélectionné dans le
+   catalogue, sans création ni déplacement automatique d’un produit.
+
+Cette validation autorise la conception du schéma JSON initial. Elle ne fait pas passer le contrat à
+`APPROVED` et ne valide pas encore les identifiants définitifs, la licence commerciale, la liste
+normative des capacités ou les limites techniques non testées.
 
 ## 9. Version du manifeste
 
