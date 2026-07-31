@@ -2,6 +2,26 @@
 
 ## 2026-07-31
 
+### Runtime local des paquets de modules
+
+- Ajout du domaine serveur `src/server/module-packages` pour valider et construire des paquets ZIP
+  privés sans extraction aveugle : limites contractuelles, chemins POSIX contrôlés, inventaire
+  déterministe, SHA-256, JSON strict, schéma Draft 2020-12 et validation Markdown sécurisée.
+- Verrouillage de `ajv 8.20.0`, `ajv-formats 3.0.1`, `yauzl 3.4.0`, `yazl 3.3.1` et `tsx 4.23.1`
+  pour la validation du manifeste, l’inspection ZIP paresseuse, la construction reproductible et
+  l’exécution locale des scripts TypeScript.
+- Ajout des commandes `modules:manifest`, `modules:validate`, `modules:build`, `modules:build:all`
+  et `modules:check`, sans secret, base de données, Docker ou service externe.
+- Matérialisation des trois préversions privées internes du bundle « Concevoir, construire, vérifier
+  » : Architecte de projet logiciel, Développeur méthodique et Auditeur logiciel et préparation à la
+  livraison.
+- Ajout de tests de sécurité couvrant manifeste invalide, propriété dupliquée, inventaire absent ou
+  supplémentaire, SHA et taille incorrects, ordre incorrect, chemins dangereux, collision de casse,
+  lien symbolique, fichier spécial, limites de taille, profondeur, nombre de fichiers, ratio de
+  compression, Markdown invalide, absence de réseau, timeout et reproductibilité.
+- Documentation du workflow local dans `docs/module-packages-local.md`; les archives générées sont
+  ignorées dans `artifacts/modules/` et les contrats paquet, manifeste et Markdown restent `DRAFT`.
+
 ### Correctif de bornage de la frontière Markdown
 
 - Bornage de l’entrée publique avant copie : octets limités à `1 MiB`, manifeste limité à 200

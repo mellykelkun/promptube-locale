@@ -73,6 +73,11 @@ contrôle.
 | `npm run format`                    | Formatage Prettier des fichiers suivis par la configuration |
 | `npm run format:check`              | Vérification du formatage sans modification                 |
 | `npm run check`                     | Format (contrôle seul), lint, types, tests, scripts, build  |
+| `npm run modules:manifest`          | Régénération du manifeste d’un module privé                 |
+| `npm run modules:validate`          | Validation d’un dossier ou d’une archive de module          |
+| `npm run modules:build`             | Construction déterministe d’un module privé                 |
+| `npm run modules:build:all`         | Construction des trois modules privés initiaux              |
+| `npm run modules:check`             | Validation complète des paquets de modules privés           |
 | `npm run audit`                     | Audit npm complet, sans correction automatique              |
 | `npm run audit:prod`                | Audit npm limité aux dépendances de production              |
 | `npm run docker:secrets:init`       | Génération locale des secrets Docker ignorés                |
@@ -131,6 +136,7 @@ src/
 │   ├── database/           # Drizzle ORM, schéma et client PostgreSQL
 │   ├── redis/              # Client Redis et rate limiting
 │   ├── markdown/           # Validation Markdown isolée, fermée et sans réseau
+│   ├── module-packages/    # Validation et build serveur des paquets privés
 │   ├── security/           # Redaction des données sensibles
 │   ├── errors/             # Erreurs typées et réponses HTTP sûres
 │   └── observability/      # Corrélation et logs structurés
@@ -142,6 +148,8 @@ src/
     ├── utilities/
     └── validation/
 tests/                      # Tests Vitest et tests shell isolés
+private-modules/            # Sources privées des modules distribuables locaux
+artifacts/modules/          # Archives ZIP générées et ignorées par Git
 docs/architecture.md        # Décisions et frontières locales
 docs/docker-local.md        # Exploitation de la stack Docker locale
 docker/                     # Images locales, proxy et entrypoints sécurisés
@@ -176,6 +184,30 @@ mémoire et concurrence restent provisoires. Deux workers sont actifs au maximum
 peuvent attendre en FIFO pendant au plus `2 500 ms`. Le scanner des zones de code est linéaire. Les
 15 acceptations et 41 des 42 rejets contractuels sont exécutables ; la parité serveur/client reste
 explicitement différée jusqu’à la branche de rendu React. Le contrat demeure `DRAFT`.
+
+### Runtime des paquets de modules
+
+`src/server/module-packages` expose une API `server-only` de validation et de construction des
+paquets privés. Le runtime lit les dossiers sources et les archives ZIP sans extraction aveugle,
+valide `promptube-module.json` avec le schéma Draft 2020-12 existant, contrôle les règles métier,
+recalcule les tailles et SHA-256, puis valide chaque Markdown via `validateSecureMarkdown`.
+
+Les commandes locales ne nécessitent ni secret, ni base, ni Docker :
+
+```bash
+npm run modules:validate -- private-modules/developpement-logiciel/architecte-projet-logiciel
+npm run modules:build -- private-modules/developpement-logiciel/architecte-projet-logiciel
+npm run modules:build:all
+npm run modules:check
+```
+
+Les trois paquets initiaux matérialisés sont `architecte-projet-logiciel`, `developpeur-methodique`
+et `auditeur-preparation-livraison`. Ils restent des préversions internes privées ; les contrats
+paquet, manifeste et Markdown restent `DRAFT`. Les ZIP générés sont écrits dans
+`artifacts/modules/`, ignorés par Git, et doivent être reconstruits depuis les sources versionnées.
+
+Le workflow local détaillé est documenté dans
+[`docs/module-packages-local.md`](docs/module-packages-local.md).
 
 ## Configuration d’environnement
 

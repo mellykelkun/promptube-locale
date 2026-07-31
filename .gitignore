@@ -21,6 +21,7 @@
 
 # production
 /build
+/artifacts/modules/
 
 # misc
 .DS_Store
