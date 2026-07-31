@@ -75,6 +75,12 @@ type ValidationState = {
   preElements: number;
 };
 
+type DenseArrayOptions = Readonly<{
+  label: string;
+  maxLength: number;
+  minLength?: number;
+}>;
+
 export function validateAndRebuildMarkdownWorkerResult(
   value: unknown,
   input: MarkdownWorkerInput,
@@ -224,23 +230,26 @@ function rebuildMetrics(
 }
 
 function rebuildIssues(value: unknown): readonly MarkdownIssue[] {
-  if (!Array.isArray(value) || value.length > markdownLimits.maxIssues) {
-    throw new TypeError("Malformed Markdown issues.");
-  }
-
-  return value.map((candidate) => {
+  const candidates = expectDenseArray(value, {
+    label: "Markdown issues",
+    maxLength: markdownLimits.maxIssues,
+  });
+  const rebuilt: MarkdownIssue[] = [];
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index];
     const issue = expectRecord(candidate, issueKeys, true);
     if (!Object.hasOwn(issue, "code") || !knownErrorCodes.has(issue.code)) {
       throw new TypeError("Unknown Markdown issue code.");
     }
-    return {
+    rebuilt.push({
       code: issue.code as MarkdownErrorCode,
       ...optionalPositiveInteger(issue, "line"),
       ...optionalPositiveInteger(issue, "column"),
       ...optionalNonNegativeInteger(issue, "limit"),
       ...optionalNonNegativeInteger(issue, "actual"),
-    };
-  });
+    });
+  }
+  return rebuilt;
 }
 
 function rebuildDocument(
@@ -253,13 +262,18 @@ function rebuildDocument(
   if (sourceSha256 !== expectedSha256) {
     throw new TypeError("Document source digest mismatch.");
   }
-  if (!Array.isArray(document.nodes) || document.nodes.length === 0) {
-    throw new TypeError("Missing validated Markdown nodes.");
-  }
+  const nodeCandidates = expectDenseArray(document.nodes, {
+    label: "validated Markdown nodes",
+    maxLength: markdownLimits.maxNodes,
+    minLength: 1,
+  });
 
   const state: ValidationState = { nodes: 0, textBytes: 0, preElements: 0 };
   const manifest = new Set(input.manifestFiles);
-  const nodes = document.nodes.map((node) => rebuildNode(node, 1, state, input.path, manifest));
+  const nodes: ValidatedMarkdownNode[] = [];
+  for (let index = 0; index < nodeCandidates.length; index += 1) {
+    nodes.push(rebuildNode(nodeCandidates[index], 1, state, input.path, manifest));
+  }
   const codeLanguages = rebuildCodeLanguages(document.codeLanguages);
   if (codeLanguages.length !== state.preElements) {
     throw new TypeError("Code language metadata mismatch.");
@@ -313,21 +327,24 @@ function rebuildNode(
   if (typeof node.tag !== "string" || !allowedHastTags.has(node.tag)) {
     throw new TypeError("Unknown validated Markdown tag.");
   }
-  if (!Array.isArray(node.children)) {
-    throw new TypeError("Invalid validated Markdown children.");
-  }
+  const childCandidates = expectDenseArray(node.children, {
+    label: "validated Markdown children",
+    maxLength: markdownLimits.maxNodes - state.nodes,
+  });
 
   const tag = node.tag as ValidatedMarkdownElement["tag"];
   if (tag === "pre") {
     state.preElements += 1;
   }
+  const children: ValidatedMarkdownNode[] = [];
+  for (let index = 0; index < childCandidates.length; index += 1) {
+    children.push(rebuildNode(childCandidates[index], depth + 1, state, sourcePath, manifest));
+  }
   return {
     kind: "element",
     tag,
     properties: rebuildProperties(node.properties, tag, sourcePath, manifest),
-    children: node.children.map((child) =>
-      rebuildNode(child, depth + 1, state, sourcePath, manifest),
-    ),
+    children,
   };
 }
 
@@ -375,18 +392,69 @@ function rebuildProperties(
 }
 
 function rebuildCodeLanguages(value: unknown): readonly (string | null)[] {
-  if (!Array.isArray(value) || value.length > markdownLimits.maxNodes) {
-    throw new TypeError("Invalid code language metadata.");
-  }
-  return value.map((language) => {
+  const candidates = expectDenseArray(value, {
+    label: "code language metadata",
+    maxLength: markdownLimits.maxNodes,
+  });
+  const rebuilt: (string | null)[] = [];
+  for (let index = 0; index < candidates.length; index += 1) {
+    const language = candidates[index];
     if (language === null) {
-      return null;
+      rebuilt.push(null);
+      continue;
     }
     if (typeof language !== "string" || !codeLanguagePattern.test(language)) {
       throw new TypeError("Invalid code language.");
     }
-    return language;
-  });
+    rebuilt.push(language);
+  }
+  return rebuilt;
+}
+
+function expectDenseArray(value: unknown, options: DenseArrayOptions): readonly unknown[] {
+  if (!Array.isArray(value)) {
+    throw new TypeError(`Invalid ${options.label}.`);
+  }
+
+  const length = value.length;
+  const minLength = options.minLength ?? 0;
+  if (!Number.isSafeInteger(length) || length < minLength || length > options.maxLength) {
+    throw new TypeError(`Invalid ${options.label} length.`);
+  }
+
+  for (let index = 0; index < length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, index);
+    if (!descriptor || !("value" in descriptor)) {
+      throw new TypeError(`Sparse ${options.label}.`);
+    }
+  }
+
+  let enumerableOwnKeys = 0;
+  for (const key in value) {
+    if (!Object.hasOwn(value, key)) {
+      continue;
+    }
+    if (!isCanonicalArrayIndex(key, length)) {
+      throw new TypeError(`Unexpected ${options.label} property.`);
+    }
+    enumerableOwnKeys += 1;
+    if (enumerableOwnKeys > length) {
+      throw new TypeError(`Unexpected ${options.label} property count.`);
+    }
+  }
+
+  return value as readonly unknown[];
+}
+
+function isCanonicalArrayIndex(key: string, length: number): boolean {
+  if (key === "0") {
+    return length > 0;
+  }
+  if (!/^[1-9][0-9]*$/u.test(key)) {
+    return false;
+  }
+  const index = Number(key);
+  return Number.isSafeInteger(index) && index < length && String(index) === key;
 }
 
 function expectRecord(
@@ -497,11 +565,16 @@ function optionalNonNegativeInteger(
 }
 
 function safeReportPath(path: string): string {
-  return /^[A-Za-z0-9._/-]{1,512}$/u.test(path) && !path.startsWith("/") ? path : "<invalid-path>";
+  return path.length <= markdownLimits.maxReportPathCharacters &&
+    /^[A-Za-z0-9._/-]+$/u.test(path) &&
+    !path.startsWith("/")
+    ? path
+    : "<invalid-path>";
 }
 
 function safeCorrelationId(correlationId: string): string {
-  return /^[A-Za-z0-9._:-]{1,128}$/u.test(correlationId)
+  return correlationId.length <= markdownLimits.maxCorrelationIdCharacters &&
+    /^[A-Za-z0-9._:-]+$/u.test(correlationId)
     ? correlationId
     : "<invalid-correlation-id>";
 }

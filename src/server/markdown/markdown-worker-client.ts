@@ -13,6 +13,7 @@ import {
 } from "./markdown-report.ts";
 import {
   createEmptyMarkdownMetrics,
+  type MarkdownIssue,
   type MarkdownValidationInput,
   type MarkdownValidationResult,
   type MarkdownWorkerInput,
@@ -35,6 +36,23 @@ type MarkdownQueueWaiter = Readonly<{
   grant: () => void;
   reject: (error: Error) => void;
 }>;
+
+type InputNormalizationSuccess = Readonly<{
+  ok: true;
+  input: MarkdownValidationInput;
+}>;
+
+type InputNormalizationFailure = Readonly<{
+  ok: false;
+  code: MarkdownErrorCode;
+  byteLength?: number;
+  path?: string;
+  correlationId?: string;
+  limit?: number;
+  actual?: number;
+}>;
+
+type InputNormalizationResult = InputNormalizationSuccess | InputNormalizationFailure;
 
 export class MarkdownWorkerSemaphore {
   private active = 0;
@@ -159,6 +177,9 @@ const defaultWorkerClientDependencies: MarkdownWorkerClientDependencies = {
   semaphore,
 };
 
+const publicInputKeys = new Set(["bytes", "path", "manifestFiles", "correlationId", "signal"]);
+const missingDataProperty = Symbol("missing Markdown input data property");
+
 function resolveMarkdownWorkerUrl(): URL {
   return pathToFileURL(resolve(process.cwd(), "src/server/markdown/markdown-worker.mts"));
 }
@@ -168,12 +189,13 @@ export function createMarkdownWorkerClient(
 ): (input: MarkdownValidationInput) => Promise<MarkdownValidationResult> {
   return async (unsafeInput) => {
     const startedAt = dependencies.reportDependencies.monotonicNow();
-    const input = normalizeMarkdownValidationInput(unsafeInput);
-    if (!input) {
-      return buildMalformedInputFailure(startedAt, dependencies.reportDependencies);
+    const normalized = normalizeMarkdownValidationInput(unsafeInput);
+    if (!normalized.ok) {
+      return buildInputNormalizationFailure(normalized, startedAt, dependencies.reportDependencies);
     }
+    const input = normalized.input;
 
-    if (input.bytes.byteLength > markdownLimits.maxBytes || input.signal?.aborted) {
+    if (input.signal?.aborted) {
       return buildParentFailure(
         input,
         markdownErrorCodes.resourceLimit,
@@ -327,24 +349,34 @@ function buildParentFailure(
   });
 }
 
-function buildMalformedInputFailure(
+function buildInputNormalizationFailure(
+  failure: InputNormalizationFailure,
   startedAt: number,
   dependencies: MarkdownReportDependencies,
 ): MarkdownValidationResult {
-  return buildParentFailure(
-    {
-      bytes: new Uint8Array(),
-      path: "<invalid-input>",
-      manifestFiles: [],
-      correlationId: "<invalid-input>",
-    },
-    markdownErrorCodes.dependencyFailure,
-    startedAt,
-    dependencies,
-  );
+  const metrics = createEmptyMarkdownMetrics(failure.byteLength ?? 0);
+  const issue: MarkdownIssue = {
+    code: failure.code,
+    ...(failure.limit === undefined ? {} : { limit: failure.limit }),
+    ...(failure.actual === undefined ? {} : { actual: failure.actual }),
+  };
+  return deepFreezeMarkdownValidationResult({
+    report: buildInvalidMarkdownReport(
+      {
+        bytes: new Uint8Array(),
+        path: failure.path ?? "<invalid-input>",
+        correlationId: failure.correlationId ?? "<invalid-input>",
+        metrics,
+        startedAt,
+        dependencies,
+      },
+      [issue],
+    ),
+    document: null,
+  });
 }
 
-function normalizeMarkdownValidationInput(value: unknown): MarkdownValidationInput | null {
+function normalizeMarkdownValidationInput(value: unknown): InputNormalizationResult {
   try {
     if (
       value === null ||
@@ -352,33 +384,191 @@ function normalizeMarkdownValidationInput(value: unknown): MarkdownValidationInp
       Array.isArray(value) ||
       Object.getPrototypeOf(value) !== Object.prototype
     ) {
-      return null;
+      return malformedInput();
     }
     const record = value as Record<string, unknown>;
-    const allowedKeys = new Set(["bytes", "path", "manifestFiles", "correlationId", "signal"]);
-    if (Object.keys(record).some((key) => !allowedKeys.has(key))) {
-      return null;
+    if (!hasOnlyExpectedEnumerableOwnKeys(record, publicInputKeys)) {
+      return malformedInput();
     }
+
+    const unsafeBytes = readOwnDataProperty(record, "bytes");
+    if (!isUint8Array(unsafeBytes)) {
+      return malformedInput();
+    }
+    const byteLength = unsafeBytes.byteLength;
+    if (byteLength > markdownLimits.maxBytes) {
+      return resourceLimitFailure({
+        byteLength,
+        limit: markdownLimits.maxBytes,
+        actual: byteLength,
+      });
+    }
+
+    const unsafePath = readOwnDataProperty(record, "path");
+    if (typeof unsafePath !== "string" || !isBoundedPath(unsafePath)) {
+      return malformedInput({ byteLength });
+    }
+
+    const unsafeCorrelationId = readOwnDataProperty(record, "correlationId");
+    if (typeof unsafeCorrelationId !== "string" || !isBoundedCorrelationId(unsafeCorrelationId)) {
+      return malformedInput({ byteLength, path: unsafePath });
+    }
+
+    const unsafeManifestFiles = readOwnDataProperty(record, "manifestFiles");
+    const manifestFiles = normalizeManifestFiles(unsafeManifestFiles, byteLength, unsafePath);
+    if (!manifestFiles.ok) {
+      return {
+        ...manifestFiles,
+        correlationId: unsafeCorrelationId,
+      };
+    }
+
+    const unsafeSignal = readOwnDataProperty(record, "signal");
     if (
-      !isUint8Array(record.bytes) ||
-      typeof record.path !== "string" ||
-      !Array.isArray(record.manifestFiles) ||
-      record.manifestFiles.some((path) => typeof path !== "string") ||
-      typeof record.correlationId !== "string" ||
-      (record.signal !== undefined && !isAbortSignal(record.signal))
+      unsafeSignal !== missingDataProperty &&
+      unsafeSignal !== undefined &&
+      !isAbortSignal(unsafeSignal)
     ) {
-      return null;
+      return malformedInput({
+        byteLength,
+        path: unsafePath,
+        correlationId: unsafeCorrelationId,
+      });
     }
     return {
-      bytes: new Uint8Array(record.bytes),
-      path: record.path,
-      manifestFiles: [...record.manifestFiles],
-      correlationId: record.correlationId,
-      ...(record.signal ? { signal: record.signal } : {}),
+      ok: true,
+      input: {
+        bytes: new Uint8Array(unsafeBytes),
+        path: unsafePath,
+        manifestFiles: manifestFiles.value,
+        correlationId: unsafeCorrelationId,
+        ...(unsafeSignal !== missingDataProperty && unsafeSignal !== undefined
+          ? { signal: unsafeSignal }
+          : {}),
+      },
     };
   } catch {
-    return null;
+    return malformedInput();
   }
+}
+
+function normalizeManifestFiles(
+  value: unknown,
+  byteLength: number,
+  path: string,
+): InputNormalizationFailure | Readonly<{ ok: true; value: readonly string[] }> {
+  if (!Array.isArray(value)) {
+    return malformedInput({ byteLength, path });
+  }
+
+  const length = value.length;
+  if (length > markdownLimits.maxManifestFiles) {
+    return resourceLimitFailure({
+      byteLength,
+      path,
+      limit: markdownLimits.maxManifestFiles,
+      actual: length,
+    });
+  }
+  if (!hasOnlyCanonicalArrayIndexKeys(value, length)) {
+    return malformedInput({ byteLength, path });
+  }
+
+  const manifestFiles: string[] = [];
+  for (let index = 0; index < length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, index);
+    if (!descriptor || !("value" in descriptor)) {
+      return malformedInput({ byteLength, path });
+    }
+    const manifestPath = descriptor.value;
+    if (typeof manifestPath !== "string" || !isBoundedPath(manifestPath)) {
+      return malformedInput({ byteLength, path });
+    }
+    manifestFiles.push(manifestPath);
+  }
+
+  return { ok: true, value: manifestFiles };
+}
+
+function malformedInput(
+  context: Omit<InputNormalizationFailure, "ok" | "code"> = {},
+): InputNormalizationFailure {
+  return {
+    ok: false,
+    code: markdownErrorCodes.dependencyFailure,
+    ...context,
+  };
+}
+
+function resourceLimitFailure(
+  context: Omit<InputNormalizationFailure, "ok" | "code">,
+): InputNormalizationFailure {
+  return {
+    ok: false,
+    code: markdownErrorCodes.resourceLimit,
+    ...context,
+  };
+}
+
+function readOwnDataProperty(record: Record<string, unknown>, key: string): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(record, key);
+  return descriptor && "value" in descriptor ? descriptor.value : missingDataProperty;
+}
+
+function hasOnlyExpectedEnumerableOwnKeys(
+  value: Record<string, unknown>,
+  allowedKeys: ReadonlySet<string>,
+): boolean {
+  let ownKeyCount = 0;
+  for (const key in value) {
+    if (!Object.hasOwn(value, key)) {
+      continue;
+    }
+    if (!allowedKeys.has(key)) {
+      return false;
+    }
+    ownKeyCount += 1;
+    if (ownKeyCount > allowedKeys.size) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function hasOnlyCanonicalArrayIndexKeys(value: readonly unknown[], length: number): boolean {
+  let ownKeyCount = 0;
+  for (const key in value) {
+    if (!Object.hasOwn(value, key)) {
+      continue;
+    }
+    if (!isCanonicalArrayIndex(key, length)) {
+      return false;
+    }
+    ownKeyCount += 1;
+    if (ownKeyCount > length) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isCanonicalArrayIndex(key: string, length: number): boolean {
+  if (key === "0") {
+    return length > 0;
+  }
+  if (!/^[1-9][0-9]*$/u.test(key)) {
+    return false;
+  }
+  const index = Number(key);
+  return Number.isSafeInteger(index) && index < length && String(index) === key;
+}
+
+function isBoundedPath(path: string): boolean {
+  return path.length <= markdownLimits.maxReportPathCharacters;
+}
+
+function isBoundedCorrelationId(correlationId: string): boolean {
+  return correlationId.length <= markdownLimits.maxCorrelationIdCharacters;
 }
 
 function isUint8Array(value: unknown): value is Uint8Array {

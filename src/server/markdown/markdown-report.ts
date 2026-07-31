@@ -94,11 +94,16 @@ function sortIssues(issues: readonly MarkdownIssue[]): MarkdownIssue[] {
 }
 
 function safeReportPath(path: string): string {
-  return /^[A-Za-z0-9._/-]{1,512}$/u.test(path) && !path.startsWith("/") ? path : "<invalid-path>";
+  return path.length <= markdownLimits.maxReportPathCharacters &&
+    /^[A-Za-z0-9._/-]+$/u.test(path) &&
+    !path.startsWith("/")
+    ? path
+    : "<invalid-path>";
 }
 
 function safeCorrelationId(correlationId: string): string {
-  return /^[A-Za-z0-9._:-]{1,128}$/u.test(correlationId)
+  return correlationId.length <= markdownLimits.maxCorrelationIdCharacters &&
+    /^[A-Za-z0-9._:-]+$/u.test(correlationId)
     ? correlationId
     : "<invalid-correlation-id>";
 }

@@ -91,6 +91,84 @@ describe("real secure Markdown worker", () => {
     expect(createWorker).not.toHaveBeenCalled();
   });
 
+  it("rejects oversized public bytes without copying them into a worker", async () => {
+    const input = {
+      ...validInput("# trop volumineux\n"),
+      bytes: new Uint8Array(markdownLimits.maxBytes + 1),
+    };
+
+    const result = await expectPublicBoundaryFailure(input, markdownErrorCodes.resourceLimit);
+
+    expect(result.report.issues[0]).toMatchObject({
+      code: markdownErrorCodes.resourceLimit,
+      limit: markdownLimits.maxBytes,
+      actual: markdownLimits.maxBytes + 1,
+    });
+  });
+
+  it("rejects too many manifest files without creating a worker", async () => {
+    const manifestFiles = Array.from(
+      { length: markdownLimits.maxManifestFiles + 1 },
+      (_value, index) => `docs/file-${index}.md`,
+    );
+    const input = {
+      ...validInput("# manifeste trop grand\n"),
+      manifestFiles,
+    };
+
+    const result = await expectPublicBoundaryFailure(input, markdownErrorCodes.resourceLimit);
+
+    expect(result.report.issues[0]).toMatchObject({
+      code: markdownErrorCodes.resourceLimit,
+      limit: markdownLimits.maxManifestFiles,
+      actual: markdownLimits.maxManifestFiles + 1,
+    });
+  });
+
+  it("rejects a sparse manifest file list without creating a worker", async () => {
+    const input = {
+      ...validInput("# manifeste creux\n"),
+      manifestFiles: new Array<string>(1),
+    };
+
+    await expectPublicBoundaryFailure(input, markdownErrorCodes.dependencyFailure);
+  });
+
+  it.each([
+    [
+      "path",
+      {
+        ...validInput("# chemin trop long\n"),
+        path: `${"a".repeat(markdownLimits.maxReportPathCharacters + 1)}.md`,
+      },
+    ],
+    [
+      "correlation identifier",
+      {
+        ...validInput("# corrélation trop longue\n"),
+        correlationId: "c".repeat(markdownLimits.maxCorrelationIdCharacters + 1),
+      },
+    ],
+  ])("rejects an oversized public %s without creating a worker", async (_name, input) => {
+    await expectPublicBoundaryFailure(input, markdownErrorCodes.dependencyFailure);
+  });
+
+  it("fails closed when public input accessors are hostile", async () => {
+    const input = {
+      path: "README.md",
+      manifestFiles: ["README.md"],
+      correlationId: "worker-test",
+    };
+    Object.defineProperty(input, "bytes", {
+      enumerable: true,
+      get: () => {
+        throw new Error("hostile getter");
+      },
+    });
+
+    await expectPublicBoundaryFailure(input, markdownErrorCodes.dependencyFailure);
+  });
+
   it.each([
     null,
     {},
@@ -180,6 +258,44 @@ describe("closed worker message validation", () => {
       "unknown result property",
       (result: MutableResult) => {
         result.unexpected = true;
+      },
+    ],
+    [
+      "sparse issues",
+      (result: MutableResult) => {
+        result.report.verdict = "MARKDOWN_INVALID";
+        result.report.issues = new Array<Record<string, unknown>>(1);
+        result.document = null;
+      },
+    ],
+    [
+      "sparse document nodes",
+      (result: MutableResult) => {
+        result.document!.nodes = new Array<Record<string, unknown>>(1);
+      },
+    ],
+    [
+      "sparse children",
+      (result: MutableResult) => {
+        result.document!.nodes[0]!.children = new Array<unknown>(1);
+      },
+    ],
+    [
+      "sparse code languages",
+      (result: MutableResult) => {
+        result.document!.codeLanguages = new Array<string | null>(1);
+      },
+    ],
+    [
+      "oversized document nodes",
+      (result: MutableResult) => {
+        result.document!.nodes = new Array<Record<string, unknown>>(markdownLimits.maxNodes + 1);
+      },
+    ],
+    [
+      "oversized children",
+      (result: MutableResult) => {
+        result.document!.nodes[0]!.children = new Array<unknown>(markdownLimits.maxNodes);
       },
     ],
   ])("rejects a forged message with %s", async (_name, mutate) => {
@@ -440,6 +556,26 @@ function fakeClient(fake: FakeWorker, timeoutMs = 20) {
   });
 }
 
+async function expectPublicBoundaryFailure(
+  input: unknown,
+  expectedCode: string,
+): Promise<MarkdownValidationResult> {
+  const createWorker = vi.fn();
+  const validate = createMarkdownWorkerClient({
+    createWorker,
+    reportDependencies: fixedReportDependencies,
+    timeoutMs: 20,
+  });
+
+  const result = await validate(input as MarkdownValidationInput);
+
+  expect(result.report.verdict).toBe("MARKDOWN_INVALID");
+  expect(result.report.issues[0]?.code).toBe(expectedCode);
+  expect(result.document).toBeNull();
+  expect(createWorker).not.toHaveBeenCalled();
+  return result;
+}
+
 function validInput(source: string): MarkdownValidationInput {
   return {
     bytes: encoder.encode(source),
@@ -506,6 +642,7 @@ type MutableResult = {
   document: {
     sourceSha256: string;
     nodes: Array<Record<string, unknown>>;
+    codeLanguages: Array<string | null>;
   } | null;
   unexpected?: unknown;
 };

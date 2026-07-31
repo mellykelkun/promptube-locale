@@ -988,11 +988,15 @@ contient un rapport et `document: null`. Aucun HAST brut, parseur, sanitizer, ho
 d’URL n’est configurable par l’appelant. Le futur rendu devra consommer le DTO validé sans reparser
 la source Markdown.
 
-Avant tout accès aux octets, l’entrée publique est contrôlée à l’exécution. Les messages du worker
-sont ensuite validés comme des données non fiables : clés, versions, métriques, erreurs, empreintes,
-chemin, corrélation, tags, propriétés, profondeur, nœuds et langages de code doivent tous respecter
-le contrat fermé. Le SHA-256 du rapport, celui du document et celui recalculé par le parent doivent
-être identiques.
+Avant toute copie d’octets ou de collection, l’entrée publique est contrôlée à l’exécution. Les
+octets sont bornés à `1 MiB`, l’inventaire `manifestFiles` est borné à 200 chemins denses, et le
+chemin principal comme l’identifiant de corrélation sont bornés avant création du worker.
+
+Les messages du worker sont ensuite validés comme des données non fiables : clés, versions,
+métriques, erreurs, empreintes, chemin, corrélation, tags, propriétés, profondeur, nœuds et langages
+de code doivent tous respecter le contrat fermé. Les collections issues du worker doivent être de
+vrais tableaux denses et bornés avant toute reconstruction. Le SHA-256 du rapport, celui du document
+et celui recalculé par le parent doivent être identiques.
 
 ## 41. Rapport de validation
 

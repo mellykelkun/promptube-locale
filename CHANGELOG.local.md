@@ -2,6 +2,13 @@
 
 ## 2026-07-31
 
+### Correctif de bornage de la frontière Markdown
+
+- Bornage de l’entrée publique avant copie : octets limités à `1 MiB`, manifeste limité à 200
+  fichiers, chemins et corrélation bornés, avec rejet sans création de worker.
+- Refus fermé des manifestes et messages worker contenant des tableaux creux, surdimensionnés ou
+  munis de propriétés énumérables inattendues avant toute reconstruction proportionnelle.
+
 ### Durcissement de la frontière du worker Markdown
 
 - Validation fermée et récursive de chaque message du worker, recalcul parental du SHA-256,
