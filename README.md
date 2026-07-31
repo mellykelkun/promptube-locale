@@ -160,6 +160,11 @@ logique, un inventaire de fichiers et un identifiant de corrélation. Elle exéc
 un worker Node.js limité et retourne soit un rapport avec un DTO fermé profondément immuable, soit
 un rapport invalide avec `document: null`.
 
+Le parent valide l’entrée à l’exécution, recalcule le SHA-256, contrôle récursivement chaque champ
+du message du worker, reconstruit un nouvel objet fermé puis gèle profondément le résultat complet.
+Un message forgé, une sortie précoce ou un échec de terminaison produit un rejet
+`MARKDOWN_DEPENDENCY_FAILURE`.
+
 Le pipeline verrouillé combine CommonMark/GFM, validation MDAST, politique URL unique, projection
 HAST contrôlée et sanitisation construite depuis zéro. Les listes de tâches deviennent du texte
 inerte, les langages de code ne créent aucune classe et les alignements de tableaux sont ignorés.
@@ -167,8 +172,10 @@ Toute accolade non échappée hors code est refusée. Aucun accès réseau, rend
 ou route applicative n’est activé.
 
 Le worker est inclus explicitement dans le traçage du build standalone. Les limites de temps,
-mémoire et concurrence restent provisoires. Le contrat demeure `DRAFT` tant que les modules réels,
-la parité serveur/client et les autres critères d’approbation ne sont pas validés.
+mémoire et concurrence restent provisoires. Deux workers sont actifs au maximum ; huit validations
+peuvent attendre en FIFO pendant au plus `2 500 ms`. Le scanner des zones de code est linéaire. Les
+15 acceptations et 41 des 42 rejets contractuels sont exécutables ; la parité serveur/client reste
+explicitement différée jusqu’à la branche de rendu React. Le contrat demeure `DRAFT`.
 
 ## Configuration d’environnement
 

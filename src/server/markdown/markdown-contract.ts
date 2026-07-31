@@ -24,6 +24,8 @@ export const markdownLimits = {
   workerMaxYoungGenerationMb: 16,
   workerStackMb: 4,
   maxConcurrentWorkers: 2,
+  maxQueuedValidations: 8,
+  workerQueueTimeoutMs: 2_500,
 } as const;
 
 export const allowedMdastNodeTypes = new Set([

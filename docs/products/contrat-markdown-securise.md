@@ -324,6 +324,10 @@ Dans la version initiale, toute accolade `{` ou `}` non échappée est interdite
 Les formes `\{` et `\}` restent autorisées. Le contrôle utilise les positions des zones de code
 déterminées par le parseur CommonMark/GFM ; aucun analyseur MDX supplémentaire n’est installé.
 
+Les parcours des accolades, instructions de module et références explicites utilisent des curseurs
+monotones sur les plages de code triées. Leur complexité doit rester linéaire par rapport à la
+taille de la source et au nombre de plages.
+
 ## 11. HTML brut
 
 Tout nœud Markdown de type `html` doit entraîner le rejet du fichier.
@@ -791,6 +795,9 @@ Après conversion et sanitisation :
 
 le fichier doit être rejeté.
 
+Si la normalisation du résultat sanitisé échoue parce que le sanitizer a supprimé ou réécrit une
+propriété attendue, l’erreur doit être `MARKDOWN_SANITIZATION_MISMATCH`, sans document partiel.
+
 Cette règle permet de détecter une erreur de pipeline, un plugin dangereux ou un contournement de la
 validation AST.
 
@@ -898,11 +905,20 @@ Les valeurs opérationnelles provisoires validées le 31 juillet 2026 sont :
 - jeune espace mémoire V8 du worker : `16 Mio` ;
 - pile V8 du worker : `4 Mio` ;
 - concurrence maximale : `2` workers ;
+- validations maximales en attente : `8` ;
+- délai maximal d’attente dans la file FIFO : `2 500 ms` ;
 - terminaison systématique du worker après succès, rejet, timeout, annulation, crash ou message
   invalide.
 
+Une saturation, une expiration ou une annulation de la file doit produire `MARKDOWN_RESOURCE_LIMIT`,
+sans création de worker ni waiter orphelin.
+
 Le worker TypeScript est exécuté réellement par Node.js 24. Sa présence et ses dépendances runtime
 sont incluses dans l’artefact Next.js standalone par le traçage de sortie explicite.
+
+Le parent valide récursivement la forme fermée du message, recalcule le SHA-256 des octets
+originaux, reconstruit un nouveau résultat et le gèle profondément. Une sortie avant message ou un
+échec de `worker.terminate()` produit `MARKDOWN_DEPENDENCY_FAILURE` et `document: null`.
 
 Cette valeur doit être confirmée avant le passage du contrat à `APPROVED`.
 
@@ -971,6 +987,12 @@ Un résultat valide contient un rapport et un `ValidatedMarkdownDocument`. Un r�
 contient un rapport et `document: null`. Aucun HAST brut, parseur, sanitizer, horloge ou politique
 d’URL n’est configurable par l’appelant. Le futur rendu devra consommer le DTO validé sans reparser
 la source Markdown.
+
+Avant tout accès aux octets, l’entrée publique est contrôlée à l’exécution. Les messages du worker
+sont ensuite validés comme des données non fiables : clés, versions, métriques, erreurs, empreintes,
+chemin, corrélation, tags, propriétés, profondeur, nœuds et langages de code doivent tous respecter
+le contrat fermé. Le SHA-256 du rapport, celui du document et celui recalculé par le parent doivent
+être identiques.
 
 ## 41. Rapport de validation
 
@@ -1103,9 +1125,9 @@ La future suite de tests doit rejeter au minimum :
 
 Les variantes d’encodage et de casse des protocoles dangereux doivent également être testées.
 
-Les 42 scénarios disposent de tests d’intégration explicitement nommés. Le scénario de divergence
-serveur/client vérifie actuellement l’invariant de divergence structurée avant rendu ; sa parité
-réelle reste différée jusqu’à l’existence du composant React.
+Les 15 acceptations sur 15 et 41 rejets sur 42 disposent de tests exécutables explicitement nommés.
+Le scénario 42 reste présent comme test `todo` : il sera activé dans la future branche de rendu
+React afin de vérifier une divergence réelle entre rendu serveur et rendu client.
 
 ## 45. Parcours manuel prévu
 

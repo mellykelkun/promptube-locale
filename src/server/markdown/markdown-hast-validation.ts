@@ -23,7 +23,14 @@ const sanitizer = unified().use(rehypeSanitize, markdownSanitizeSchema).freeze()
 export async function sanitizeAndValidateHast(tree: Root): Promise<NormalizedMarkdownHast> {
   const before = normalizeMarkdownHast(tree);
   const sanitized = (await sanitizer.run(structuredClone(tree))) as Root;
-  const after = normalizeMarkdownHast(sanitized);
+  let after: NormalizedMarkdownHast;
+  try {
+    after = normalizeMarkdownHast(sanitized);
+  } catch {
+    throw new MarkdownValidationFailure({
+      code: markdownErrorCodes.sanitizationMismatch,
+    });
+  }
 
   if (JSON.stringify(before) !== JSON.stringify(after)) {
     throw new MarkdownValidationFailure({

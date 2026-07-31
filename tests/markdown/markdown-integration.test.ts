@@ -5,15 +5,19 @@ import type { Root as MdastRoot } from "mdast";
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  deferredMarkdownFixtures,
   fixtureBytes,
   invalidMarkdownFixtures,
   validMarkdownFixtures,
   type MarkdownFixture,
 } from "../fixtures/markdown/scenarios";
 import { validateMarkdownAst } from "@/server/markdown/markdown-ast-validation.ts";
-import { assertSanitizationMatch } from "@/server/markdown/markdown-hast-validation.ts";
 import { markdownErrorCodes } from "@/server/markdown/markdown-error-codes.ts";
-import { validateMarkdownCore } from "@/server/markdown/markdown-validator-core.ts";
+import { defaultMarkdownReportDependencies } from "@/server/markdown/markdown-report.ts";
+import {
+  createMarkdownValidatorCore,
+  validateMarkdownCore,
+} from "@/server/markdown/markdown-validator-core.ts";
 import { createEmptyMarkdownMetrics } from "@/server/markdown/markdown-types.ts";
 
 const require = createRequire(import.meta.url);
@@ -59,6 +63,12 @@ describe("secure Markdown contractual rejections", () => {
   });
 });
 
+describe("secure Markdown contractual scenarios deferred to the React renderer", () => {
+  for (const fixture of deferredMarkdownFixtures) {
+    it.todo(fixture.name);
+  }
+});
+
 async function expectHookRejection(fixture: MarkdownFixture): Promise<void> {
   if (fixture.hook === "unknown-node" || fixture.hook === "forbidden-property") {
     const node =
@@ -71,25 +81,29 @@ async function expectHookRejection(fixture: MarkdownFixture): Promise<void> {
   }
 
   if (fixture.hook === "sanitize-mismatch") {
-    const before: HastRoot = {
-      type: "root",
-      children: [
-        {
-          type: "element",
-          tagName: "p",
-          properties: {},
-          children: [{ type: "text", value: "avant" }],
-        },
-      ],
-    };
-    const after = structuredClone(before);
-    after.children[0] = {
-      type: "element",
-      tagName: "p",
-      properties: {},
-      children: [{ type: "text", value: "après" }],
-    };
-    expect(() => assertSanitizationMatch(before, after)).toThrow();
+    const validate = createMarkdownValidatorCore({
+      ...defaultMarkdownReportDependencies,
+      project: async () =>
+        ({
+          type: "root",
+          children: [
+            {
+              type: "element",
+              tagName: "a",
+              properties: { href: "javascript:alert(1)" },
+              children: [{ type: "text", value: "lien" }],
+            },
+          ],
+        }) satisfies HastRoot,
+    });
+    const result = await validate({
+      bytes: new TextEncoder().encode("[lien](https://example.com)\n"),
+      path: "README.md",
+      manifestFiles: ["README.md"],
+      correlationId: "sanitize-mismatch",
+    });
+    expect(result.report.issues).toEqual([{ code: markdownErrorCodes.sanitizationMismatch }]);
+    expect(result.document).toBeNull();
     return;
   }
 

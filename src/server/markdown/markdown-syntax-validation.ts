@@ -32,9 +32,10 @@ export function validateFrontMatter(source: string): void {
 
 export function validateForbiddenMarkdownSyntax(source: string, tree: Root): void {
   const codeRanges = collectCodeRanges(tree);
+  const braceRangeCursor = createRangeCursor(codeRanges);
 
   for (let index = 0; index < source.length; index += 1) {
-    if (isInsideRange(index, codeRanges)) {
+    if (braceRangeCursor.contains(index)) {
       continue;
     }
 
@@ -48,10 +49,11 @@ export function validateForbiddenMarkdownSyntax(source: string, tree: Root): voi
   }
 
   let lineStart = 0;
+  const moduleRangeCursor = createRangeCursor(codeRanges);
   for (const line of source.split("\n")) {
     const firstContentOffset = lineStart + (line.match(/^\s*/u)?.[0].length ?? 0);
     if (
-      !isInsideRange(firstContentOffset, codeRanges) &&
+      !moduleRangeCursor.contains(firstContentOffset) &&
       /^(?:import\s+(?:.+\s+from\s+)?["'][^"']+["']|export\s+(?:default|const|let|var|function|class|\*))/u.test(
         line.trimStart(),
       )
@@ -94,8 +96,25 @@ function collectCodeRanges(tree: Root): OffsetRange[] {
   return ranges.sort((left, right) => left.start - right.start);
 }
 
-function isInsideRange(offset: number, ranges: readonly OffsetRange[]): boolean {
-  return ranges.some((range) => offset >= range.start && offset < range.end);
+function createRangeCursor(ranges: readonly OffsetRange[]): {
+  contains: (offset: number) => boolean;
+} {
+  let index = 0;
+  let previousOffset = -1;
+
+  return {
+    contains(offset) {
+      if (offset < previousOffset) {
+        throw new TypeError("Range cursor offsets must be monotonic.");
+      }
+      previousOffset = offset;
+      while (index < ranges.length && offset >= ranges[index].end) {
+        index += 1;
+      }
+      const range = ranges[index];
+      return Boolean(range && offset >= range.start && offset < range.end);
+    },
+  };
 }
 
 function isEscaped(source: string, offset: number): boolean {
@@ -127,9 +146,10 @@ function validateExplicitReferences(
   }
 
   const referencePattern = /(?<!!)\[([^\]\n]+)\]\[([^\]\n]*)\]/gu;
+  const referenceRangeCursor = createRangeCursor(codeRanges);
   for (const match of source.matchAll(referencePattern)) {
     const offset = match.index;
-    if (isInsideRange(offset, codeRanges)) {
+    if (referenceRangeCursor.contains(offset)) {
       continue;
     }
     const identifier = normalizeReferenceIdentifier(match[2] || match[1]);

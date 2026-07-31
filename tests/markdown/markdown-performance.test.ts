@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { markdownLimits } from "@/server/markdown/markdown-contract.ts";
 import { validateMarkdownCore } from "@/server/markdown/markdown-validator-core.ts";
+import { validateSecureMarkdown } from "@/server/markdown/markdown-validator.ts";
 
 const encoder = new TextEncoder();
 
@@ -41,5 +42,25 @@ describe("provisional Markdown boundary measurements", () => {
     expect(result.report.verdict).toBe("MARKDOWN_VALID");
     expect(result.report.metrics.tableCells).toBeLessThanOrEqual(markdownLimits.maxTableCells);
     expect(result.report.metrics.durationMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it("handles many code ranges near the source and node limits through the worker", async () => {
+    const fragment = `\`{${"x".repeat(116)}}\` `;
+    const source =
+      Array.from(
+        { length: 8_000 },
+        (_, index) => `${fragment}${(index + 1) % 200 === 0 ? "\n" : ""}`,
+      ).join("") + "texte ordinaire final\n";
+
+    expect(encoder.encode(source).byteLength).toBeLessThan(markdownLimits.maxBytes);
+    const result = await validateSecureMarkdown({
+      bytes: encoder.encode(source),
+      path: "README.md",
+      manifestFiles: ["README.md"],
+      correlationId: "linear-range-scanner",
+    });
+
+    expect(result.report.verdict, JSON.stringify(result.report.issues)).toBe("MARKDOWN_VALID");
+    expect(result.report.metrics.nodes).toBeLessThanOrEqual(markdownLimits.maxNodes);
   });
 });

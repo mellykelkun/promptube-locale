@@ -2,6 +2,21 @@
 
 ## 2026-07-31
 
+### Durcissement de la frontière du worker Markdown
+
+- Validation fermée et récursive de chaque message du worker, recalcul parental du SHA-256,
+  reconstruction du résultat et gel profond de l’ensemble du DTO et du rapport.
+- Validation d’exécution des entrées publiques et conversion fail-closed des entrées mal formées,
+  messages forgés, sorties précoces et échecs de terminaison.
+- Bornage de la file à huit validations en attente pendant au plus `2 500 ms`, avec ordre FIFO,
+  annulation, expiration et nettoyage des waiters.
+- Remplacement des recherches répétées dans les plages de code par des curseurs monotones de
+  complexité linéaire.
+- Exécution réelle de `rehype-sanitize` pour le scénario 35 et classement de toute modification
+  comme `MARKDOWN_SANITIZATION_MISMATCH`.
+- Couverture contractuelle corrigée : 15 acceptations sur 15, 41 rejets exécutables sur 42 et parité
+  serveur/client conservée en `todo` jusqu’à la future branche de rendu React.
+
 ### Fondation du validateur Markdown sécurisé
 
 - Verrouillage de `unified 11.0.5`, `remark-parse 11.0.0`, `remark-gfm 4.0.1`,
@@ -15,8 +30,9 @@
 - Ajout d’un worker Node.js à timeout, limites mémoire, concurrence bornée, annulation et
   terminaison systématique ; validation de son exécution sous Vitest et depuis le build Next.js
   standalone.
-- Ajout des 15 scénarios d’acceptation, des 42 scénarios de rejet, des matrices URL/IP, des limites
-  provisoires, des défaillances injectées et de la preuve d’absence d’accès réseau.
+- Ajout des 15 scénarios d’acceptation, des 41 scénarios de rejet exécutables, du scénario de parité
+  différé, des matrices URL/IP, des limites provisoires, des défaillances injectées et de la preuve
+  d’absence d’accès réseau.
 - Comparaison des audits avant/après sans nouvel avis introduit par la pile Markdown.
 - Maintien du contrat au statut `DRAFT` ; aucun rendu React, route, upload, stockage, ZIP,
   migration, conteneur ou publication n’est ajouté.

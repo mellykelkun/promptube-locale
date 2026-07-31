@@ -4,7 +4,8 @@ export type MarkdownFixture = Readonly<{
   bytes?: Uint8Array;
   path?: string;
   manifestFiles?: readonly string[];
-  hook?: "unknown-node" | "forbidden-property" | "sanitize-mismatch" | "network-proof";
+  hook?:
+    "unknown-node" | "forbidden-property" | "sanitize-mismatch" | "network-proof" | "render-parity";
 }>;
 
 const headingDocument = Array.from(
@@ -132,7 +133,10 @@ export const invalidMarkdownFixtures: readonly MarkdownFixture[] = [
   { name: "rejet 39 - tableau trop large", source: excessiveTable },
   { name: "rejet 40 - destination de lien trop longue", source: `[x](${longDestination})\n` },
   { name: "rejet 41 - aucune tentative réseau", hook: "network-proof" },
-  { name: "rejet 42 - divergence de représentation détectée", hook: "sanitize-mismatch" },
+];
+
+export const deferredMarkdownFixtures: readonly MarkdownFixture[] = [
+  { name: "rejet 42 - divergence réelle serveur/client", hook: "render-parity" },
 ];
 
 export function fixtureBytes(fixture: MarkdownFixture): Uint8Array {

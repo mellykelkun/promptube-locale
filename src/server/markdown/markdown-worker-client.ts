@@ -17,7 +17,10 @@ import {
   type MarkdownValidationResult,
   type MarkdownWorkerInput,
 } from "./markdown-types.ts";
-import { deepFreezeValidatedDocument } from "./markdown-validated-document.ts";
+import {
+  deepFreezeMarkdownValidationResult,
+  validateAndRebuildMarkdownWorkerResult,
+} from "./markdown-worker-result-validation.ts";
 
 type WorkerFactory = () => Worker;
 
@@ -25,44 +28,115 @@ type MarkdownWorkerClientDependencies = Readonly<{
   createWorker: WorkerFactory;
   reportDependencies: MarkdownReportDependencies;
   timeoutMs: number;
+  semaphore?: MarkdownWorkerSemaphore;
 }>;
 
-class MarkdownWorkerSemaphore {
+type MarkdownQueueWaiter = Readonly<{
+  grant: () => void;
+  reject: (error: Error) => void;
+}>;
+
+export class MarkdownWorkerSemaphore {
   private active = 0;
-  private readonly waiters: Array<() => void> = [];
+  private readonly waiters: MarkdownQueueWaiter[] = [];
+
+  constructor(
+    private readonly maxActive: number = markdownLimits.maxConcurrentWorkers,
+    private readonly maxQueued: number = markdownLimits.maxQueuedValidations,
+    private readonly waitTimeoutMs: number = markdownLimits.workerQueueTimeoutMs,
+  ) {
+    if (
+      !Number.isInteger(maxActive) ||
+      maxActive < 1 ||
+      !Number.isInteger(maxQueued) ||
+      maxQueued < 0 ||
+      !Number.isFinite(waitTimeoutMs) ||
+      waitTimeoutMs < 1
+    ) {
+      throw new TypeError("Invalid Markdown worker semaphore limits.");
+    }
+  }
+
+  get activeCount(): number {
+    return this.active;
+  }
+
+  get waitingCount(): number {
+    return this.waiters.length;
+  }
 
   async acquire(signal?: AbortSignal): Promise<() => void> {
     if (signal?.aborted) {
       throw new DOMException("Validation aborted.", "AbortError");
     }
 
-    if (this.active >= markdownLimits.maxConcurrentWorkers) {
-      await new Promise<void>((resolve, reject) => {
-        const onAbort = () => {
-          const index = this.waiters.indexOf(onReady);
-          if (index !== -1) {
-            this.waiters.splice(index, 1);
-          }
-          reject(new DOMException("Validation aborted.", "AbortError"));
-        };
-        const onReady = () => {
-          signal?.removeEventListener("abort", onAbort);
-          resolve();
-        };
-        signal?.addEventListener("abort", onAbort, { once: true });
-        this.waiters.push(onReady);
-      });
+    if (this.active < this.maxActive) {
+      this.active += 1;
+      return this.createRelease();
     }
 
-    this.active += 1;
+    if (this.waiters.length >= this.maxQueued) {
+      throw new DOMException("Markdown validation queue is full.", "QuotaExceededError");
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      let settled = false;
+
+      const cleanup = () => {
+        clearTimeout(timeout);
+        signal?.removeEventListener("abort", onAbort);
+      };
+      const finish = (action: () => void) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        cleanup();
+        action();
+      };
+      const removeWaiter = () => {
+        const index = this.waiters.indexOf(waiter);
+        if (index !== -1) {
+          this.waiters.splice(index, 1);
+        }
+      };
+      const onAbort = () => {
+        removeWaiter();
+        waiter.reject(new DOMException("Validation aborted.", "AbortError"));
+      };
+
+      const waiter: MarkdownQueueWaiter = {
+        grant: () => finish(resolve),
+        reject: (error) => finish(() => reject(error)),
+      };
+      const timeout = setTimeout(() => {
+        removeWaiter();
+        waiter.reject(new DOMException("Markdown validation queue timed out.", "TimeoutError"));
+      }, this.waitTimeoutMs);
+      signal?.addEventListener("abort", onAbort, { once: true });
+      this.waiters.push(waiter);
+
+      if (signal?.aborted) {
+        onAbort();
+      }
+    });
+
+    return this.createRelease();
+  }
+
+  private createRelease(): () => void {
     let released = false;
     return () => {
       if (released) {
         return;
       }
       released = true;
-      this.active -= 1;
-      this.waiters.shift()?.();
+      const waiter = this.waiters.shift();
+      if (waiter) {
+        waiter.grant();
+      } else {
+        this.active -= 1;
+      }
     };
   }
 }
@@ -82,6 +156,7 @@ const defaultWorkerClientDependencies: MarkdownWorkerClientDependencies = {
     }),
   reportDependencies: defaultMarkdownReportDependencies,
   timeoutMs: markdownLimits.workerTimeoutMs,
+  semaphore,
 };
 
 function resolveMarkdownWorkerUrl(): URL {
@@ -91,8 +166,13 @@ function resolveMarkdownWorkerUrl(): URL {
 export function createMarkdownWorkerClient(
   dependencies: MarkdownWorkerClientDependencies = defaultWorkerClientDependencies,
 ): (input: MarkdownValidationInput) => Promise<MarkdownValidationResult> {
-  return async (input) => {
+  return async (unsafeInput) => {
     const startedAt = dependencies.reportDependencies.monotonicNow();
+    const input = normalizeMarkdownValidationInput(unsafeInput);
+    if (!input) {
+      return buildMalformedInputFailure(startedAt, dependencies.reportDependencies);
+    }
+
     if (input.bytes.byteLength > markdownLimits.maxBytes || input.signal?.aborted) {
       return buildParentFailure(
         input,
@@ -104,7 +184,7 @@ export function createMarkdownWorkerClient(
 
     let release: (() => void) | undefined;
     try {
-      release = await semaphore.acquire(input.signal);
+      release = await (dependencies.semaphore ?? semaphore).acquire(input.signal);
     } catch {
       return buildParentFailure(
         input,
@@ -147,6 +227,13 @@ async function runWorker(
     );
   }
 
+  const workerInput: MarkdownWorkerInput = {
+    bytes: new Uint8Array(input.bytes),
+    path: input.path,
+    manifestFiles: [...input.manifestFiles],
+    correlationId: input.correlationId,
+  };
+
   return new Promise((resolve) => {
     let settled = false;
     const timeout = setTimeout(
@@ -155,58 +242,60 @@ async function runWorker(
     );
 
     const onAbort = () => void settleWithFailure(markdownErrorCodes.resourceLimit);
-    input.signal?.addEventListener("abort", onAbort, { once: true });
-
-    worker.once("message", (message: unknown) => {
-      if (!isMarkdownValidationResult(message)) {
-        void settleWithFailure(markdownErrorCodes.dependencyFailure);
-        return;
-      }
-      void settle(message);
-    });
-    worker.once(
-      "error",
-      (error) =>
-        void settleWithFailure(
-          "code" in error && error.code === "ERR_WORKER_OUT_OF_MEMORY"
-            ? markdownErrorCodes.resourceLimit
-            : markdownErrorCodes.dependencyFailure,
-        ),
-    );
-    worker.once("exit", (code) => {
-      if (!settled && code !== 0) {
-        void settleWithFailure(markdownErrorCodes.dependencyFailure);
-      }
-    });
-
-    const workerInput: MarkdownWorkerInput = {
-      bytes: new Uint8Array(input.bytes),
-      path: input.path,
-      manifestFiles: [...input.manifestFiles],
-      correlationId: input.correlationId,
+    const onMessage = (message: unknown) => {
+      const rebuilt = validateAndRebuildMarkdownWorkerResult(message, workerInput);
+      void settle(
+        rebuilt ??
+          buildParentFailure(
+            input,
+            markdownErrorCodes.dependencyFailure,
+            startedAt,
+            dependencies.reportDependencies,
+          ),
+      );
     };
+    const onError = (error: Error) =>
+      void settleWithFailure(
+        "code" in error && error.code === "ERR_WORKER_OUT_OF_MEMORY"
+          ? markdownErrorCodes.resourceLimit
+          : markdownErrorCodes.dependencyFailure,
+      );
+    const onExit = () => void settleWithFailure(markdownErrorCodes.dependencyFailure);
+
+    input.signal?.addEventListener("abort", onAbort, { once: true });
+    worker.once("message", onMessage);
+    worker.once("error", onError);
+    worker.once("exit", onExit);
+
     try {
       worker.postMessage(workerInput);
     } catch {
       void settleWithFailure(markdownErrorCodes.dependencyFailure);
     }
 
-    async function settle(result: MarkdownValidationResult): Promise<void> {
+    async function settle(candidate: MarkdownValidationResult): Promise<void> {
       if (settled) {
         return;
       }
       settled = true;
       clearTimeout(timeout);
       input.signal?.removeEventListener("abort", onAbort);
-      try {
-        await worker.terminate();
-      } catch {
-        // The result remains fail-closed even if an already failed worker cannot terminate cleanly.
-      }
-      if (result.document) {
-        deepFreezeValidatedDocument(result.document);
-      }
-      resolve(result);
+      worker.removeListener("message", onMessage);
+      worker.removeListener("error", onError);
+      worker.removeListener("exit", onExit);
+
+      let result = candidate;
+      await new Promise<void>((resolve, reject) => {
+        worker.terminate().then(() => resolve(), reject);
+      }).catch(() => {
+        result = buildParentFailure(
+          input,
+          markdownErrorCodes.dependencyFailure,
+          startedAt,
+          dependencies.reportDependencies,
+        );
+      });
+      resolve(deepFreezeMarkdownValidationResult(result));
     }
 
     async function settleWithFailure(code: MarkdownErrorCode): Promise<void> {
@@ -222,7 +311,7 @@ function buildParentFailure(
   dependencies: MarkdownReportDependencies,
 ): MarkdownValidationResult {
   const metrics = createEmptyMarkdownMetrics(input.bytes.byteLength);
-  return {
+  return deepFreezeMarkdownValidationResult({
     report: buildInvalidMarkdownReport(
       {
         bytes: input.bytes,
@@ -235,26 +324,75 @@ function buildParentFailure(
       [{ code }],
     ),
     document: null,
-  };
+  });
 }
 
-function isMarkdownValidationResult(value: unknown): value is MarkdownValidationResult {
-  if (!value || typeof value !== "object" || !("report" in value) || !("document" in value)) {
+function buildMalformedInputFailure(
+  startedAt: number,
+  dependencies: MarkdownReportDependencies,
+): MarkdownValidationResult {
+  return buildParentFailure(
+    {
+      bytes: new Uint8Array(),
+      path: "<invalid-input>",
+      manifestFiles: [],
+      correlationId: "<invalid-input>",
+    },
+    markdownErrorCodes.dependencyFailure,
+    startedAt,
+    dependencies,
+  );
+}
+
+function normalizeMarkdownValidationInput(value: unknown): MarkdownValidationInput | null {
+  try {
+    if (
+      value === null ||
+      typeof value !== "object" ||
+      Array.isArray(value) ||
+      Object.getPrototypeOf(value) !== Object.prototype
+    ) {
+      return null;
+    }
+    const record = value as Record<string, unknown>;
+    const allowedKeys = new Set(["bytes", "path", "manifestFiles", "correlationId", "signal"]);
+    if (Object.keys(record).some((key) => !allowedKeys.has(key))) {
+      return null;
+    }
+    if (
+      !isUint8Array(record.bytes) ||
+      typeof record.path !== "string" ||
+      !Array.isArray(record.manifestFiles) ||
+      record.manifestFiles.some((path) => typeof path !== "string") ||
+      typeof record.correlationId !== "string" ||
+      (record.signal !== undefined && !isAbortSignal(record.signal))
+    ) {
+      return null;
+    }
+    return {
+      bytes: new Uint8Array(record.bytes),
+      path: record.path,
+      manifestFiles: [...record.manifestFiles],
+      correlationId: record.correlationId,
+      ...(record.signal ? { signal: record.signal } : {}),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function isUint8Array(value: unknown): value is Uint8Array {
+  return (
+    ArrayBuffer.isView(value) &&
+    Object.prototype.toString.call(value) === "[object Uint8Array]" &&
+    (value as Uint8Array).BYTES_PER_ELEMENT === 1
+  );
+}
+
+function isAbortSignal(value: unknown): value is AbortSignal {
+  try {
+    return value instanceof AbortSignal;
+  } catch {
     return false;
   }
-  const candidate = value as {
-    report?: { verdict?: unknown; issues?: unknown };
-    document?: unknown;
-  };
-  if (
-    !candidate.report ||
-    !Array.isArray(candidate.report.issues) ||
-    (candidate.report.verdict !== "MARKDOWN_VALID" &&
-      candidate.report.verdict !== "MARKDOWN_INVALID")
-  ) {
-    return false;
-  }
-  return candidate.report.verdict === "MARKDOWN_VALID"
-    ? Boolean(candidate.document)
-    : candidate.document === null;
 }
