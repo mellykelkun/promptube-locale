@@ -2,6 +2,18 @@
 
 ## 2026-07-30
 
+### Contrat de sécurisation du Markdown
+
+- Ajout du contrat initial de validation, transformation et rendu sécurisé des fichiers Markdown
+  distribuables.
+- Validation explicite par le propriétaire des sept fondations de conception : format textuel sans
+  image, absence de contenu exécutable, liens contrôlés, ancres internes différées, Mermaid et
+  mathématiques inertes, validation et sanitisation en profondeur, et limites provisoires à tester.
+- Maintien du contrat au statut `DRAFT` jusqu’à l’implémentation et aux tests du validateur, de la
+  sanitisation fermée et des scénarios de sécurité.
+- Aucun validateur applicatif, upload, stockage, migration ou mécanisme de publication n’est ajouté
+  pendant cette phase.
+
 ### Contrats techniques des paquets et manifestes
 
 - Ajout du contrat technique initial des paquets de modules Promptube : structure de l’archive ZIP
