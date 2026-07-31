@@ -1,5 +1,26 @@
 # Changelog local
 
+## 2026-07-31
+
+### Fondation du validateur Markdown sécurisé
+
+- Verrouillage de `unified 11.0.5`, `remark-parse 11.0.0`, `remark-gfm 4.0.1`,
+  `remark-rehype 11.1.2`, `rehype-sanitize 6.0.0`, `ipaddr.js 2.4.0` et des types MDAST/HAST.
+- Ajout du domaine serveur `src/server/markdown` : validation stricte des octets et chemins, parsing
+  CommonMark/GFM, contrôle MDAST itératif, liens HTTPS et internes, projection HAST fermée,
+  sanitisation sans schéma par défaut, comparaison structurelle et rapports déterministes.
+- Ajout d’un DTO validé fermé, sans HAST brut ni document partiel en cas de rejet.
+- Application de la règle interdisant toute accolade non échappée hors code en ligne, bloc clôturé
+  ou bloc indenté, sans analyseur MDX supplémentaire.
+- Ajout d’un worker Node.js à timeout, limites mémoire, concurrence bornée, annulation et
+  terminaison systématique ; validation de son exécution sous Vitest et depuis le build Next.js
+  standalone.
+- Ajout des 15 scénarios d’acceptation, des 42 scénarios de rejet, des matrices URL/IP, des limites
+  provisoires, des défaillances injectées et de la preuve d’absence d’accès réseau.
+- Comparaison des audits avant/après sans nouvel avis introduit par la pile Markdown.
+- Maintien du contrat au statut `DRAFT` ; aucun rendu React, route, upload, stockage, ZIP,
+  migration, conteneur ou publication n’est ajouté.
+
 ## 2026-07-30
 
 ### Contrat de sécurisation du Markdown
