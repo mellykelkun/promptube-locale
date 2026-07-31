@@ -4,8 +4,9 @@ Application Next.js privée destinée à l’administration locale de Promptube.
 fondation technique, son infrastructure Docker locale isolée, PostgreSQL, Redis, Drizzle ORM, Better
 Auth, l’authentification administrateur locale, le TOTP obligatoire, les sessions révocables, le
 journal d’audit et le catalogue local des catégories, sous-catégories, modules et versions de
-modules. Le catalogue reste strictement local : aucune publication, aucun upload et aucune connexion
-à `promptube-prod` ne sont ajoutés.
+modules. Il contient également la fondation serveur isolée du validateur Markdown sécurisé, sans
+route ni interface consommatrice. Le catalogue reste strictement local : aucune publication, aucun
+upload et aucune connexion à `promptube-prod` ne sont ajoutés.
 
 ## Prérequis
 
@@ -129,6 +130,7 @@ src/
 │   ├── config/             # Configuration serveur validée
 │   ├── database/           # Drizzle ORM, schéma et client PostgreSQL
 │   ├── redis/              # Client Redis et rate limiting
+│   ├── markdown/           # Validation Markdown isolée, fermée et sans réseau
 │   ├── security/           # Redaction des données sensibles
 │   ├── errors/             # Erreurs typées et réponses HTTP sûres
 │   └── observability/      # Corrélation et logs structurés
@@ -150,6 +152,30 @@ compose.yaml                # Stack locale isolée promptube_admin
 
 Les modules sous `src/server` importent `server-only`. Une tentative d’import depuis un Client
 Component doit donc échouer au build.
+
+### Validateur Markdown sécurisé
+
+`src/server/markdown` expose uniquement `validateSecureMarkdown`. L’API reçoit des octets, un chemin
+logique, un inventaire de fichiers et un identifiant de corrélation. Elle exécute la validation dans
+un worker Node.js limité et retourne soit un rapport avec un DTO fermé profondément immuable, soit
+un rapport invalide avec `document: null`.
+
+Le parent valide l’entrée à l’exécution, recalcule le SHA-256, contrôle récursivement chaque champ
+du message du worker, reconstruit un nouvel objet fermé puis gèle profondément le résultat complet.
+Un message forgé, une sortie précoce ou un échec de terminaison produit un rejet
+`MARKDOWN_DEPENDENCY_FAILURE`.
+
+Le pipeline verrouillé combine CommonMark/GFM, validation MDAST, politique URL unique, projection
+HAST contrôlée et sanitisation construite depuis zéro. Les listes de tâches deviennent du texte
+inerte, les langages de code ne créent aucune classe et les alignements de tableaux sont ignorés.
+Toute accolade non échappée hors code est refusée. Aucun accès réseau, rendu React, upload, stockage
+ou route applicative n’est activé.
+
+Le worker est inclus explicitement dans le traçage du build standalone. Les limites de temps,
+mémoire et concurrence restent provisoires. Deux workers sont actifs au maximum ; huit validations
+peuvent attendre en FIFO pendant au plus `2 500 ms`. Le scanner des zones de code est linéaire. Les
+15 acceptations et 41 des 42 rejets contractuels sont exécutables ; la parité serveur/client reste
+explicitement différée jusqu’à la branche de rendu React. Le contrat demeure `DRAFT`.
 
 ## Configuration d’environnement
 
@@ -382,9 +408,9 @@ applicables à leurs futurs paquets distribuables.
 Les fiches produit décrivent les modules attendus. Les contrats et le schéma définissent la
 structure technique que devront respecter leurs futurs dossiers et archives privées.
 
-Les sept fondations de sécurisation du Markdown sont validées comme base de conception. Le contrat
-reste au statut `DRAFT` jusqu’à l’implémentation et aux tests du validateur, de la sanitisation
-fermée et des scénarios de sécurité.
+Les sept fondations de sécurisation du Markdown et l’architecture du validateur sont validées comme
+base de conception. Le contrat reste au statut `DRAFT` jusqu’à la validation des limites sur le
+matériel cible, des modules distribuables réels et de la future parité de rendu serveur/client.
 
 Ces éléments n’intègrent aucun module distribuable et n’activent aucun upload, stockage, ZIP,
 paiement ou mécanisme de publication dans l’application.

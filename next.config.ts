@@ -25,6 +25,13 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  outputFileTracingIncludes: {
+    "/*": [
+      "./src/server/markdown/**/*",
+      "./node_modules/@ungap/structured-clone/**/*",
+      "./node_modules/{bail,ccount,character-entities,debug,decode-named-character-reference,dequal,devlop,escape-string-regexp,extend,hast-util-sanitize,ipaddr.js,is-plain-obj,longest-streak,markdown-table,mdast-util-*,micromark,micromark-*,ms,rehype-sanitize,remark-*,server-only,trim-lines,trough,unified,unist-util-*,vfile,vfile-message,zwitch}/**/*",
+    ],
+  },
   poweredByHeader: false,
   async headers() {
     return [

@@ -12,6 +12,7 @@
 - **Politique d’exécution :** contenu strictement inerte
 - **Position dans le cycle :** après le contrat du manifeste et avant le stockage
 - **Fondations de conception validées par le propriétaire :** 2026-07-30
+- **Architecture du validateur validée par le propriétaire :** 2026-07-31
 
 ## 1. Objectif
 
@@ -185,6 +186,21 @@ Cette validation fixe la base de conception du futur validateur. Elle ne fait pa
 à `APPROVED` : son statut reste `DRAFT` tant que le pipeline, la sanitisation et les scénarios de
 sécurité ne sont pas implémentés et testés.
 
+Le propriétaire a validé le 31 juillet 2026 les décisions d’architecture suivantes :
+
+- la pile exacte `unified`, `remark-parse`, `remark-gfm`, `remark-rehype`, `rehype-sanitize` et
+  `ipaddr.js` ;
+- une API serveur unique recevant les octets, le chemin logique, l’inventaire et la corrélation ;
+- un DTO fermé et profondément immuable comme seule sortie rendable ;
+- des projections GFM contrôlées, sans case interactive, classe de langage ni alignement libre ;
+- un schéma de sanitisation construit depuis zéro ;
+- une isolation obligatoire avant toute entrée non fiable ;
+- le phasage d’implémentation du cœur, des contrôles, des tests et du worker ;
+- l’interdiction de toute accolade non échappée hors code dans la version initiale ;
+- le report du rendu React à une branche distincte.
+
+Ces décisions ne modifient pas le statut `DRAFT`.
+
 ## 7. Encodage et représentation
 
 Chaque fichier Markdown doit :
@@ -298,6 +314,19 @@ La version initiale interdit notamment :
 - tout mécanisme nécessitant `allowDangerousHtml`.
 
 Une syntaxe interdite située dans un bloc ou un fragment de code reste autorisée comme texte inerte.
+
+Dans la version initiale, toute accolade `{` ou `}` non échappée est interdite hors :
+
+- fragment de code en ligne ;
+- bloc de code clôturé ;
+- bloc de code indenté.
+
+Les formes `\{` et `\}` restent autorisées. Le contrôle utilise les positions des zones de code
+déterminées par le parseur CommonMark/GFM ; aucun analyseur MDX supplémentaire n’est installé.
+
+Les parcours des accolades, instructions de module et références explicites utilisent des curseurs
+monotones sur les plages de code triées. Leur complexité doit rester linéaire par rapport à la
+taille de la source et au nombre de plages.
 
 ## 11. HTML brut
 
@@ -766,6 +795,9 @@ Après conversion et sanitisation :
 
 le fichier doit être rejeté.
 
+Si la normalisation du résultat sanitisé échoue parce que le sanitizer a supprimé ou réécrit une
+propriété attendue, l’erreur doit être `MARKDOWN_SANITIZATION_MISMATCH`, sans document partiel.
+
 Cette règle permet de détecter une erreur de pipeline, un plugin dangereux ou un contournement de la
 validation AST.
 
@@ -850,18 +882,43 @@ Le dépassement d’une limite entraîne un rejet avant le rendu.
 
 ## 38. Limites de temps et de ressources
 
-Le futur validateur doit disposer :
+Le validateur Markdown par fichier dispose :
 
 - d’une limite de temps par fichier ;
-- d’une limite de temps par paquet ;
 - d’une limite mémoire ;
 - d’un mécanisme d’interruption ;
 - d’un compteur de nœuds et de profondeur pendant l’analyse ;
 - d’une protection contre les expressions régulières catastrophiques ;
 - de mesures permettant de confirmer les limites sur le matériel cible.
 
+Le futur orchestrateur de validation des paquets devra imposer une limite de temps cumulée par
+paquet et interrompre le traitement global lorsque cette limite sera dépassée. Cette responsabilité
+n’est pas implémentée dans le validateur Markdown par fichier de la présente phase.
+
 La valeur cible initiale pour l’analyse et la validation d’un fichier de taille maximale est de deux
 secondes dans un environnement isolé représentatif.
+
+Les valeurs opérationnelles provisoires validées le 31 juillet 2026 sont :
+
+- délai parent par fichier : `2 500 ms` ;
+- ancien espace mémoire V8 du worker : `64 Mio` ;
+- jeune espace mémoire V8 du worker : `16 Mio` ;
+- pile V8 du worker : `4 Mio` ;
+- concurrence maximale : `2` workers ;
+- validations maximales en attente : `8` ;
+- délai maximal d’attente dans la file FIFO : `2 500 ms` ;
+- terminaison systématique du worker après succès, rejet, timeout, annulation, crash ou message
+  invalide.
+
+Une saturation, une expiration ou une annulation de la file doit produire `MARKDOWN_RESOURCE_LIMIT`,
+sans création de worker ni waiter orphelin.
+
+Le worker TypeScript est exécuté réellement par Node.js 24. Sa présence et ses dépendances runtime
+sont incluses dans l’artefact Next.js standalone par le traçage de sortie explicite.
+
+Le parent valide récursivement la forme fermée du message, recalcule le SHA-256 des octets
+originaux, reconstruit un nouveau résultat et le gèle profondément. Une sortie avant message ou un
+échec de `worker.terminate()` produit `MARKDOWN_DEPENDENCY_FAILURE` et `document: null`.
 
 Cette valeur doit être confirmée avant le passage du contrat à `APPROVED`.
 
@@ -882,6 +939,20 @@ Toute dépendance du pipeline Markdown doit :
 Une mise à jour majeure de l’analyseur, du convertisseur, du sanitizer ou du moteur de rendu doit
 déclencher une nouvelle exécution de la suite complète de fixtures Markdown.
 
+La pile initiale verrouillée est :
+
+| Responsabilité        | Dépendance        | Version  |
+| --------------------- | ----------------- | -------- |
+| Orchestration         | `unified`         | `11.0.5` |
+| Analyse CommonMark    | `remark-parse`    | `11.0.0` |
+| Extensions GFM        | `remark-gfm`      | `4.0.1`  |
+| Projection MDAST/HAST | `remark-rehype`   | `11.1.2` |
+| Sanitisation          | `rehype-sanitize` | `6.0.0`  |
+| Classification IP     | `ipaddr.js`       | `2.4.0`  |
+
+`remark-gfm` utilise `singleTilde: false`. Aucun `rehype-raw`, parseur MDX, plugin dynamique,
+surligneur, moteur de diagramme ou moteur mathématique n’est activé.
+
 ## 40. Validation côté serveur et côté client
 
 La décision d’accepter ou de refuser un fichier appartient au serveur ou au pipeline de validation
@@ -899,6 +970,33 @@ Une prévisualisation côté client :
 - ne charge aucune ressource externe automatiquement.
 
 Une divergence entre les deux environnements doit bloquer la publication.
+
+L’API serveur initiale est :
+
+```ts
+validateSecureMarkdown({
+  bytes,
+  path,
+  manifestFiles,
+  correlationId,
+  signal,
+}): Promise<MarkdownValidationResult>
+```
+
+Un résultat valide contient un rapport et un `ValidatedMarkdownDocument`. Un résultat invalide
+contient un rapport et `document: null`. Aucun HAST brut, parseur, sanitizer, horloge ou politique
+d’URL n’est configurable par l’appelant. Le futur rendu devra consommer le DTO validé sans reparser
+la source Markdown.
+
+Avant toute copie d’octets ou de collection, l’entrée publique est contrôlée à l’exécution. Les
+octets sont bornés à `1 MiB`, l’inventaire `manifestFiles` est borné à 200 chemins denses, et le
+chemin principal comme l’identifiant de corrélation sont bornés avant création du worker.
+
+Les messages du worker sont ensuite validés comme des données non fiables : clés, versions,
+métriques, erreurs, empreintes, chemin, corrélation, tags, propriétés, profondeur, nœuds et langages
+de code doivent tous respecter le contrat fermé. Les collections issues du worker doivent être de
+vrais tableaux denses et bornés avant toute reconstruction. Le SHA-256 du rapport, celui du document
+et celui recalculé par le parent doivent être identiques.
 
 ## 41. Rapport de validation
 
@@ -980,6 +1078,8 @@ La future suite de tests doit accepter au minimum :
 
 Chaque acceptation doit vérifier l’AST, le résultat sanité et l’absence d’accès réseau.
 
+Les 15 scénarios disposent de tests d’intégration explicitement nommés depuis le 31 juillet 2026.
+
 ## 44. Scénarios obligatoires de rejet
 
 La future suite de tests doit rejeter au minimum :
@@ -1028,6 +1128,10 @@ La future suite de tests doit rejeter au minimum :
 42. une divergence entre le rendu serveur et le rendu client.
 
 Les variantes d’encodage et de casse des protocoles dangereux doivent également être testées.
+
+Les 15 acceptations sur 15 et 41 rejets sur 42 disposent de tests exécutables explicitement nommés.
+Le scénario 42 reste présent comme test `todo` : il sera activé dans la future branche de rendu
+React afin de vérifier une divergence réelle entre rendu serveur et rendu client.
 
 ## 45. Parcours manuel prévu
 
@@ -1089,12 +1193,9 @@ Une défaillance interne ne doit jamais produire un verdict valide.
 
 ## 48. Hors périmètre de cette version
 
-Le présent document ne crée pas encore :
+Le présent document et l’implémentation serveur associée ne créent pas encore :
 
-- le validateur Markdown TypeScript ;
-- les types et codes d’erreur applicatifs ;
-- le schéma exécutable de sanitisation ;
-- les fixtures valides et invalides ;
+- une route applicative appelant le validateur ;
 - le composant React de rendu ;
 - la prévisualisation dans l’administration ;
 - la Content Security Policy définitive ;
@@ -1119,13 +1220,8 @@ Ces éléments nécessitent des phases de conception, d’implémentation et de 
 
 Les décisions suivantes restent ouvertes :
 
-- bibliothèque exacte d’analyse Markdown ;
 - bibliothèque exacte de rendu ;
-- version et configuration de `remark-gfm` ;
-- schéma exécutable de `rehype-sanitize` ;
-- emplacement du validateur dans l’architecture ;
 - valeurs définitives des limites de ressources ;
-- mécanisme d’interruption des traitements ;
 - stratégie de comparaison du rendu serveur et client ;
 - politique future des ancres de titres ;
 - politique future des liens vers des fragments ;
