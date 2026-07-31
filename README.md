@@ -377,9 +377,14 @@ applicables à leurs futurs paquets distribuables.
 - [Contrat technique des paquets de modules](docs/products/contrat-paquet-module.md)
 - [Contrat versionné du manifeste](docs/products/contrat-manifeste-module.md)
 - [Schéma JSON initial du manifeste](docs/products/schemas/promptube-module.schema.json)
+- [Contrat de sécurisation du Markdown](docs/products/contrat-markdown-securise.md)
 
 Les fiches produit décrivent les modules attendus. Les contrats et le schéma définissent la
 structure technique que devront respecter leurs futurs dossiers et archives privées.
+
+Les sept fondations de sécurisation du Markdown sont validées comme base de conception. Le contrat
+reste au statut `DRAFT` jusqu’à l’implémentation et aux tests du validateur, de la sanitisation
+fermée et des scénarios de sécurité.
 
 Ces éléments n’intègrent aucun module distribuable et n’activent aucun upload, stockage, ZIP,
 paiement ou mécanisme de publication dans l’application.
