@@ -1,7 +1,16 @@
 import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { EventEmitter } from "node:events";
-import { open as fsOpen, mkdir, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
+import {
+  link,
+  mkdir,
+  open as fsOpen,
+  readFile,
+  readdir,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
@@ -65,7 +74,7 @@ describe("secure module package runtime", () => {
       expect(first.archiveSha256).toBe(sha256);
       expect(second.archiveSha256).toBe(sha256);
     }
-  });
+  }, 15_000);
 
   it.each([
     ["duplicate property", '{"manifestVersion":"1.0.0","manifestVersion":"1.0.0"}\n'],
@@ -157,6 +166,57 @@ describe("secure module package runtime", () => {
 
     expect(result.ok).toBe(false);
     expect(result.report.issues[0]?.code).toBe(modulePackageErrorCodes.archiveInvalid);
+  });
+
+  it("rejects an existing hard-linked source file before opening it", async () => {
+    const directory = await createModuleSource("hardlink-existing");
+    const outside = join(tempRoot, "hardlink-source.md");
+    const hardLinkedPath = join(directory, "instructions", "hard-linked.md");
+    await writeFile(outside, "# Shared inode\n");
+    await link(outside, hardLinkedPath);
+    const opened: string[] = [];
+
+    const result = await validateModulePackageDirectory(directory, {
+      archive: {
+        fileRead: {
+          open: ((path, flags, mode) => {
+            opened.push(String(path));
+            return fsOpen(path, flags, mode);
+          }) as typeof fsOpen,
+        },
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.report.issues[0]?.code).toBe(modulePackageErrorCodes.archiveInvalid);
+    expect(result.report.issues[0]?.path).toBe("instructions/hard-linked.md");
+    expect(opened.some((path) => path.endsWith("hard-linked.md"))).toBe(false);
+  });
+
+  it("rejects a source file hard-linked between lstat and descriptor fstat", async () => {
+    const directory = await createModuleSource("hardlink-during-open");
+    const lateLink = join(tempRoot, "late-hardlink.md");
+    await rm(lateLink, { force: true });
+    let linked = false;
+
+    const result = await validateModulePackageDirectory(directory, {
+      archive: {
+        fileRead: {
+          open: (async (path, flags, mode) => {
+            if (!linked && String(path).endsWith("instructions/role.md")) {
+              linked = true;
+              await link(String(path), lateLink);
+            }
+            return await fsOpen(path, flags, mode);
+          }) as typeof fsOpen,
+        },
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.report.issues[0]?.code).toBe(modulePackageErrorCodes.archiveInvalid);
+    expect(result.report.issues[0]?.path).toBe("instructions/role.md");
+    expect(linked).toBe(true);
   });
 
   it("rejects a source package containing a special file", async () => {

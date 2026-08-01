@@ -54,8 +54,8 @@ Le runtime de paquet :
 
 - refuse les chemins absolus, traversants, ambigus, Windows réservés, avec backslash ou collision de
   casse ;
-- refuse les fichiers cachés, vides, spéciaux, liens symboliques, répertoires ZIP explicites et
-  entrées hors structure autorisée ;
+- refuse les fichiers cachés, vides, spéciaux, liens symboliques et physiques, répertoires ZIP
+  explicites et entrées hors structure autorisée ;
 - applique les limites contractuelles de taille compressée, taille décompressée, taille par fichier,
   nombre de fichiers, profondeur, longueur de chemin et ratio de compression avant de charger les
   fichiers en mémoire ;

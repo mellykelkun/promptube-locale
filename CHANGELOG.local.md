@@ -16,6 +16,8 @@
   si le verdict est valide.
 - Correction du rapport de validation : `manifestVersion` reste `null` tant qu’aucun manifeste n’a
   passé la validation structurelle et métier.
+- Rejet explicite des fichiers sources liés physiquement, avant ouverture lorsque `nlink !== 1` est
+  visible au `lstat`, puis à nouveau après ouverture et après lecture via `fstat`.
 
 ## 2026-07-31
 

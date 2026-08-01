@@ -42,6 +42,7 @@ type BoundedFileReadDependencies = Readonly<{
 type BoundedFileReadOptions = Readonly<{
   logicalPath: string;
   maxBytes: number;
+  requireSingleLink: boolean;
 }>;
 
 type BoundedFileReadResult = Readonly<{
@@ -97,6 +98,7 @@ export async function readModuleArchive(
     {
       logicalPath: archivePath,
       maxBytes: modulePackageLimits.maxArchiveBytes,
+      requireSingleLink: false,
     },
     dependencies.fileRead,
   );
@@ -162,6 +164,7 @@ async function walkSourceDirectory(
       {
         logicalPath: relativePath,
         maxBytes: modulePackageLimits.maxFileBytes,
+        requireSingleLink: true,
       },
       dependencies.fileRead,
     );
@@ -503,6 +506,15 @@ function validateRegularFileStats(stats: Stats, options: BoundedFileReadOptions)
         path: options.logicalPath,
         limit: options.maxBytes,
         actual: stats.size,
+      },
+    ]);
+  }
+  if (options.requireSingleLink && stats.nlink !== 1) {
+    throw new ModulePackageArchiveError([
+      {
+        code: modulePackageErrorCodes.archiveInvalid,
+        message: "Package source file must not be hard-linked.",
+        path: options.logicalPath,
       },
     ]);
   }
