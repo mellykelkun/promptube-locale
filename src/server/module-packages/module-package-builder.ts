@@ -1,15 +1,17 @@
 import "server-only";
 
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, rename, unlink, writeFile } from "node:fs/promises";
 import { basename, join, resolve } from "node:path";
 
 import * as yazl from "yazl";
 
 import {
+  modulePackageLimits,
   modulePackageNormalizedZipMtime,
   modulePackageZipFileMode,
 } from "./module-package-constants.ts";
-import { sha256Hex } from "./module-package-hash.ts";
+import { modulePackageErrorCodes } from "./module-package-error-codes.ts";
+import { createValidationId, sha256Hex } from "./module-package-hash.ts";
 import { buildManifestFromSource, serializeManifest } from "./module-package-manifest.ts";
 import type {
   BuiltModulePackage,
@@ -17,7 +19,8 @@ import type {
   ModulePackageSourceFile,
 } from "./module-package-types.ts";
 import { comparePackagePaths } from "./module-package-paths.ts";
-import { readModuleSourceDirectory } from "./module-package-archive.ts";
+import { ModulePackageArchiveError, readModuleSourceDirectory } from "./module-package-archive.ts";
+import { validateModulePackageArchive } from "./module-package-validator.ts";
 
 export async function buildModulePackageFromDirectory(
   sourceDirectory: string,
@@ -38,18 +41,46 @@ export async function buildModulePackageFromDirectory(
   ].sort((left, right) => comparePackagePaths(left.path, right.path));
 
   const archiveBytes = await createDeterministicZip(archiveFiles);
+  if (archiveBytes.byteLength > modulePackageLimits.maxArchiveBytes) {
+    throw new ModulePackageArchiveError([
+      {
+        code: modulePackageErrorCodes.resourceLimit,
+        message: "Built archive exceeds the compressed size limit.",
+        limit: modulePackageLimits.maxArchiveBytes,
+        actual: archiveBytes.byteLength,
+      },
+    ]);
+  }
+
   await mkdir(outputDirectory, { recursive: true });
   const archivePath = resolve(
     outputDirectory,
     `promptube-${manifest.module.slug}-${manifest.module.version}.zip`,
   );
-  await writeFile(archivePath, archiveBytes, { mode: 0o600 });
-  return {
-    archivePath,
-    archiveSha256: sha256Hex(archiveBytes),
-    archiveBytes: archiveBytes.byteLength,
-    manifest,
-  };
+  const temporaryPath = resolve(
+    outputDirectory,
+    `.${basename(archivePath)}.${createValidationId()}.tmp`,
+  );
+  let promoted = false;
+  try {
+    await writeFile(temporaryPath, archiveBytes, { mode: 0o600, flag: "wx" });
+    const validation = await validateModulePackageArchive(temporaryPath);
+    if (!validation.ok) {
+      throw new ModulePackageArchiveError(validation.report.issues);
+    }
+    await rename(temporaryPath, archivePath);
+    promoted = true;
+    return {
+      archivePath,
+      archiveSha256: sha256Hex(archiveBytes),
+      archiveBytes: archiveBytes.byteLength,
+      manifest,
+    };
+  } finally {
+    if (!promoted) {
+      await unlinkIfExists(temporaryPath);
+    }
+  }
 }
 
 export async function buildAllModulePackages(
@@ -103,6 +134,16 @@ async function createDeterministicZip(files: readonly ModulePackageSourceFile[])
   }
   zip.end();
   return await finished;
+}
+
+async function unlinkIfExists(path: string): Promise<void> {
+  try {
+    await unlink(path);
+  } catch (error) {
+    if (!(error instanceof Error) || !("code" in error) || error.code !== "ENOENT") {
+      throw error;
+    }
+  }
 }
 
 function requiredFile(

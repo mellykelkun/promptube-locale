@@ -188,9 +188,10 @@ explicitement différée jusqu’à la branche de rendu React. Le contrat demeur
 ### Runtime des paquets de modules
 
 `src/server/module-packages` expose une API `server-only` de validation et de construction des
-paquets privés. Le runtime lit les dossiers sources et les archives ZIP sans extraction aveugle,
-valide `promptube-module.json` avec le schéma Draft 2020-12 existant, contrôle les règles métier,
-recalcule les tailles et SHA-256, puis valide chaque Markdown via `validateSecureMarkdown`.
+paquets privés. Le runtime contrôle les tailles et types de fichiers avant lecture complète, lit les
+dossiers sources et les archives ZIP sans extraction aveugle, valide `promptube-module.json` avec le
+schéma Draft 2020-12 existant, contrôle les règles métier, recalcule les tailles et SHA-256, puis
+valide chaque Markdown via `validateSecureMarkdown`.
 
 Les commandes locales ne nécessitent ni secret, ni base, ni Docker :
 
@@ -205,6 +206,8 @@ Les trois paquets initiaux matérialisés sont `architecte-projet-logiciel`, `de
 et `auditeur-preparation-livraison`. Ils restent des préversions internes privées ; les contrats
 paquet, manifeste et Markdown restent `DRAFT`. Les ZIP générés sont écrits dans
 `artifacts/modules/`, ignorés par Git, et doivent être reconstruits depuis les sources versionnées.
+Le builder écrit d’abord une archive temporaire dans le dossier cible, la valide complètement, puis
+renomme atomiquement vers le chemin final uniquement si le paquet est valide.
 
 Le workflow local détaillé est documenté dans
 [`docs/module-packages-local.md`](docs/module-packages-local.md).

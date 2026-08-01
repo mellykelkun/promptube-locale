@@ -1,6 +1,9 @@
 import "server-only";
 
-import { lstat, readdir, readFile } from "node:fs/promises";
+import { constants as fsConstants } from "node:fs";
+import type { Stats } from "node:fs";
+import { lstat, open, readdir } from "node:fs/promises";
+import type { FileHandle } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 import { Readable } from "node:stream";
 
@@ -26,12 +29,44 @@ export class ModulePackageArchiveError extends Error {
   }
 }
 
+export type ModulePackageArchiveDependencies = Readonly<{
+  fileRead?: BoundedFileReadDependencies;
+  openZip?: (buffer: Buffer) => Promise<yauzl.ZipFile>;
+}>;
+
+type BoundedFileReadDependencies = Readonly<{
+  lstat?: typeof lstat;
+  open?: typeof open;
+}>;
+
+type BoundedFileReadOptions = Readonly<{
+  logicalPath: string;
+  maxBytes: number;
+}>;
+
+type BoundedFileReadResult = Readonly<{
+  bytes: Buffer;
+  size: number;
+  sha256: string;
+}>;
+
 export async function readModuleSourceDirectory(
   sourceDirectory: string,
+  dependencies: ModulePackageArchiveDependencies = {},
 ): Promise<ModulePackageSourceFile[]> {
   const root = resolve(sourceDirectory);
+  const rootStats = await lstat(root);
+  if (rootStats.isSymbolicLink() || !rootStats.isDirectory()) {
+    throw new ModulePackageArchiveError([
+      {
+        code: modulePackageErrorCodes.archiveInvalid,
+        message: "Source package root must be a real directory.",
+      },
+    ]);
+  }
   const files: ModulePackageSourceFile[] = [];
-  await walkSourceDirectory(root, root, files);
+  const state = { fileCount: 0, totalBytes: 0 };
+  await walkSourceDirectory(root, root, files, state, dependencies);
   validateCollectedFiles(files);
   return files.sort((left, right) => comparePackagePaths(left.path, right.path));
 }
@@ -40,23 +75,36 @@ export async function readModuleArchive(archivePath: string): Promise<{
   archiveBytes: number;
   archiveSha256: string;
   files: readonly ModulePackageSourceFile[];
+}>;
+export async function readModuleArchive(
+  archivePath: string,
+  dependencies: ModulePackageArchiveDependencies,
+): Promise<{
+  archiveBytes: number;
+  archiveSha256: string;
+  files: readonly ModulePackageSourceFile[];
+}>;
+export async function readModuleArchive(
+  archivePath: string,
+  dependencies: ModulePackageArchiveDependencies = {},
+): Promise<{
+  archiveBytes: number;
+  archiveSha256: string;
+  files: readonly ModulePackageSourceFile[];
 }> {
-  const archive = await readFile(archivePath);
-  if (archive.byteLength > modulePackageLimits.maxArchiveBytes) {
-    throw new ModulePackageArchiveError([
-      {
-        code: modulePackageErrorCodes.resourceLimit,
-        message: "Archive size exceeds the compressed size limit.",
-        limit: modulePackageLimits.maxArchiveBytes,
-        actual: archive.byteLength,
-      },
-    ]);
-  }
+  const archive = await readRegularFileBounded(
+    archivePath,
+    {
+      logicalPath: archivePath,
+      maxBytes: modulePackageLimits.maxArchiveBytes,
+    },
+    dependencies.fileRead,
+  );
 
-  const files = await inspectZipBuffer(Buffer.from(archive));
+  const files = await inspectZipBuffer(Buffer.from(archive.bytes), dependencies);
   return {
-    archiveBytes: archive.byteLength,
-    archiveSha256: sha256Hex(archive),
+    archiveBytes: archive.size,
+    archiveSha256: archive.sha256,
     files,
   };
 }
@@ -65,6 +113,8 @@ async function walkSourceDirectory(
   root: string,
   directory: string,
   files: ModulePackageSourceFile[],
+  state: { fileCount: number; totalBytes: number },
+  dependencies: ModulePackageArchiveDependencies,
 ): Promise<void> {
   const entries = await readdir(directory, { withFileTypes: true });
   for (const entry of entries) {
@@ -92,7 +142,7 @@ async function walkSourceDirectory(
           },
         ]);
       }
-      await walkSourceDirectory(root, absolutePath, files);
+      await walkSourceDirectory(root, absolutePath, files, state, dependencies);
       continue;
     }
 
@@ -106,36 +156,74 @@ async function walkSourceDirectory(
       ]);
     }
 
-    const bytes = await readFile(absolutePath);
+    reserveSourceFileRead(relativePath, stats.size, state);
+    const file = await readRegularFileBounded(
+      absolutePath,
+      {
+        logicalPath: relativePath,
+        maxBytes: modulePackageLimits.maxFileBytes,
+      },
+      dependencies.fileRead,
+    );
+    if (file.size !== stats.size) {
+      throw new ModulePackageArchiveError([
+        {
+          code: modulePackageErrorCodes.archiveInvalid,
+          message: "Source package file changed while it was being read.",
+          path: relativePath,
+        },
+      ]);
+    }
     files.push({
       path: relativePath,
-      bytes,
-      size: bytes.byteLength,
-      sha256: sha256Hex(bytes),
+      bytes: file.bytes,
+      size: file.size,
+      sha256: file.sha256,
     });
   }
 }
 
-async function inspectZipBuffer(buffer: Buffer): Promise<readonly ModulePackageSourceFile[]> {
-  const zipFile = await openZip(buffer);
+async function inspectZipBuffer(
+  buffer: Buffer,
+  dependencies: ModulePackageArchiveDependencies,
+): Promise<readonly ModulePackageSourceFile[]> {
+  const zipFile = await (dependencies.openZip ?? openZip)(buffer);
   const files: ModulePackageSourceFile[] = [];
   const paths: string[] = [];
   let totalCompressed = 0;
   let totalUncompressed = 0;
-  let closed = false;
+  let settled = false;
 
   return await new Promise((resolvePromise, rejectPromise) => {
-    const fail = (issue: ModulePackageIssue) => {
-      if (!closed) {
-        closed = true;
-        zipFile.close();
+    const settleFailure = (error: unknown) => {
+      if (settled) {
+        return;
       }
-      rejectPromise(new ModulePackageArchiveError([issue]));
+      settled = true;
+      closeZip(zipFile);
+      rejectPromise(toArchiveError(error));
+    };
+
+    const fail = (issue: ModulePackageIssue) =>
+      settleFailure(new ModulePackageArchiveError([issue]));
+
+    const settleSuccess = () => {
+      if (settled) {
+        return;
+      }
+      try {
+        validateCollectedFiles(files);
+        settled = true;
+        closeZip(zipFile);
+        resolvePromise(files.sort((left, right) => comparePackagePaths(left.path, right.path)));
+      } catch (error) {
+        settleFailure(error);
+      }
     };
 
     zipFile.on("entry", (entry) => {
       void (async () => {
-        if (closed) {
+        if (settled) {
           return;
         }
         try {
@@ -166,6 +254,9 @@ async function inspectZipBuffer(buffer: Buffer): Promise<readonly ModulePackageS
           }
 
           const bytes = await readZipEntry(zipFile, entry);
+          if (settled) {
+            return;
+          }
           if (bytes.byteLength !== entry.uncompressedSize) {
             fail({
               code: modulePackageErrorCodes.archiveInvalid,
@@ -182,34 +273,13 @@ async function inspectZipBuffer(buffer: Buffer): Promise<readonly ModulePackageS
           });
           zipFile.readEntry();
         } catch (error) {
-          rejectPromise(
-            error instanceof ModulePackageArchiveError
-              ? error
-              : new ModulePackageArchiveError([
-                  {
-                    code: modulePackageErrorCodes.dependencyFailure,
-                    message: error instanceof Error ? error.message : "ZIP dependency failed.",
-                  },
-                ]),
-          );
+          settleFailure(error);
         }
       })();
     });
-    zipFile.on("end", () => {
-      if (closed) {
-        return;
-      }
-      closed = true;
-      zipFile.close();
-      try {
-        validateCollectedFiles(files);
-        resolvePromise(files.sort((left, right) => comparePackagePaths(left.path, right.path)));
-      } catch (error) {
-        rejectPromise(error);
-      }
-    });
+    zipFile.on("end", settleSuccess);
     zipFile.on("error", (error) => {
-      rejectPromise(
+      settleFailure(
         new ModulePackageArchiveError([
           {
             code: modulePackageErrorCodes.archiveInvalid,
@@ -218,7 +288,11 @@ async function inspectZipBuffer(buffer: Buffer): Promise<readonly ModulePackageS
         ]),
       );
     });
-    zipFile.readEntry();
+    try {
+      zipFile.readEntry();
+    } catch (error) {
+      settleFailure(error);
+    }
   });
 }
 
@@ -336,6 +410,136 @@ function validateCollectedFiles(files: readonly ModulePackageSourceFile[]): void
   }
 }
 
+async function readRegularFileBounded(
+  path: string,
+  options: BoundedFileReadOptions,
+  dependencies: BoundedFileReadDependencies = {},
+): Promise<BoundedFileReadResult> {
+  const readLstat = dependencies.lstat ?? lstat;
+  const readOpen = dependencies.open ?? open;
+  const initialStats = await readLstat(path);
+  validateRegularFileStats(initialStats, options);
+  const file = await openWithoutFollowingSymlinks(path, options.logicalPath, readOpen);
+  try {
+    const descriptorStats = await file.stat();
+    validateRegularFileStats(descriptorStats, options);
+    if (statsIdentityChanged(initialStats, descriptorStats)) {
+      throw new ModulePackageArchiveError([
+        {
+          code: modulePackageErrorCodes.archiveInvalid,
+          message: "File metadata changed before it was read.",
+          path: options.logicalPath,
+        },
+      ]);
+    }
+    const bytes = await file.readFile();
+    const finalStats = await file.stat();
+    validateRegularFileStats(finalStats, options);
+    if (
+      bytes.byteLength !== descriptorStats.size ||
+      finalStats.size !== descriptorStats.size ||
+      statsIdentityChanged(descriptorStats, finalStats)
+    ) {
+      throw new ModulePackageArchiveError([
+        {
+          code: modulePackageErrorCodes.archiveInvalid,
+          message: "File metadata changed while it was being read.",
+          path: options.logicalPath,
+        },
+      ]);
+    }
+    return {
+      bytes,
+      size: bytes.byteLength,
+      sha256: sha256Hex(bytes),
+    };
+  } finally {
+    await file.close();
+  }
+}
+
+function reserveSourceFileRead(
+  path: string,
+  size: number,
+  state: { fileCount: number; totalBytes: number },
+): void {
+  const nextFileCount = state.fileCount + 1;
+  const nextTotalBytes = state.totalBytes + size;
+  if (
+    size <= 0 ||
+    size > modulePackageLimits.maxFileBytes ||
+    nextFileCount > modulePackageLimits.maxArchiveFileEntries ||
+    nextTotalBytes > modulePackageLimits.maxTotalUncompressedBytes
+  ) {
+    throw new ModulePackageArchiveError([
+      {
+        code: modulePackageErrorCodes.resourceLimit,
+        message: "Source package exceeds file count, per-file size or total size limits.",
+        path,
+        limit: modulePackageLimits.maxFileBytes,
+        actual: Math.max(size, nextFileCount, nextTotalBytes),
+      },
+    ]);
+  }
+  state.fileCount = nextFileCount;
+  state.totalBytes = nextTotalBytes;
+}
+
+function validateRegularFileStats(stats: Stats, options: BoundedFileReadOptions): void {
+  if (stats.isSymbolicLink() || !stats.isFile()) {
+    throw new ModulePackageArchiveError([
+      {
+        code: modulePackageErrorCodes.archiveInvalid,
+        message: "Package file must be a real regular file.",
+        path: options.logicalPath,
+      },
+    ]);
+  }
+  if (stats.size <= 0 || stats.size > options.maxBytes) {
+    throw new ModulePackageArchiveError([
+      {
+        code: modulePackageErrorCodes.resourceLimit,
+        message: "Package file exceeds the configured size limit.",
+        path: options.logicalPath,
+        limit: options.maxBytes,
+        actual: stats.size,
+      },
+    ]);
+  }
+}
+
+async function openWithoutFollowingSymlinks(
+  path: string,
+  logicalPath: string,
+  readOpen: typeof open,
+): Promise<FileHandle> {
+  const noFollow = "O_NOFOLLOW" in fsConstants ? fsConstants.O_NOFOLLOW : 0;
+  try {
+    return await readOpen(path, fsConstants.O_RDONLY | noFollow);
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ELOOP") {
+      throw new ModulePackageArchiveError([
+        {
+          code: modulePackageErrorCodes.archiveInvalid,
+          message: "Package file became a symbolic link before it was opened.",
+          path: logicalPath,
+        },
+      ]);
+    }
+    throw error;
+  }
+}
+
+function statsIdentityChanged(left: Stats, right: Stats): boolean {
+  return (
+    left.dev !== 0 &&
+    right.dev !== 0 &&
+    left.ino !== 0 &&
+    right.ino !== 0 &&
+    (left.dev !== right.dev || left.ino !== right.ino)
+  );
+}
+
 function openZip(buffer: Buffer): Promise<yauzl.ZipFile> {
   return new Promise((resolvePromise, rejectPromise) => {
     yauzl.fromBuffer(
@@ -355,7 +559,7 @@ function openZip(buffer: Buffer): Promise<yauzl.ZipFile> {
 function readZipEntry(zipFile: yauzl.ZipFile, entry: yauzl.Entry): Promise<Buffer> {
   return new Promise((resolvePromise, rejectPromise) => {
     zipFile.openReadStream(entry, (error, stream) => {
-      if (error) {
+      if (error || !stream) {
         rejectPromise(error);
         return;
       }
@@ -398,6 +602,9 @@ function isAllowedDirectoryPrefix(path: string): boolean {
     return false;
   }
   const segments = path.split("/");
+  if (segments.length > modulePackageLimits.maxDirectoryDepth) {
+    return false;
+  }
   return (
     modulePackageAllowedDirectories.includes(
       segments[0] as (typeof modulePackageAllowedDirectories)[number],
@@ -409,4 +616,33 @@ function isAllowedDirectoryPrefix(path: string): boolean {
         /^[a-z0-9](?:[a-z0-9-]{0,78}[a-z0-9])?$/u.test(segment),
     )
   );
+}
+
+function toArchiveError(error: unknown): ModulePackageArchiveError {
+  if (error instanceof ModulePackageArchiveError) {
+    return error;
+  }
+  return new ModulePackageArchiveError([
+    {
+      code: modulePackageErrorCodes.dependencyFailure,
+      message: error instanceof Error ? error.message : "ZIP dependency failed.",
+    },
+  ]);
+}
+
+function closeZip(zipFile: yauzl.ZipFile): void {
+  try {
+    zipFile.close();
+  } catch {
+    // Closing is best-effort after a terminal ZIP validation result.
+  }
+}
+
+export async function safeModulePackageFileSize(path: string): Promise<number> {
+  try {
+    const stats = await lstat(path);
+    return stats.isFile() ? stats.size : 0;
+  } catch {
+    return 0;
+  }
 }

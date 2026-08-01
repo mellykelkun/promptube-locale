@@ -57,16 +57,22 @@ Le runtime de paquet :
 - refuse les fichiers cachés, vides, spéciaux, liens symboliques, répertoires ZIP explicites et
   entrées hors structure autorisée ;
 - applique les limites contractuelles de taille compressée, taille décompressée, taille par fichier,
-  nombre de fichiers, profondeur, longueur de chemin et ratio de compression ;
+  nombre de fichiers, profondeur, longueur de chemin et ratio de compression avant de charger les
+  fichiers en mémoire ;
 - valide le manifeste en UTF-8 sans BOM, sans propriété dupliquée, avec Ajv Draft 2020-12 en mode
   strict ;
 - vérifie l’inventaire complet, l’ordre déterministe, les tailles exactes et les SHA-256 ;
 - valide tous les Markdown par l’API publique `validateSecureMarkdown`, sans parser Markdown
   parallèle et sans accès réseau ;
-- construit des ZIP reproductibles avec ordre stable, permissions et dates normalisées.
+- applique le délai cumulé du paquet aux validations Markdown déjà en cours avec un signal
+  d’annulation ;
+- construit des ZIP reproductibles avec ordre stable, permissions et dates normalisées ;
+- valide chaque archive dans un fichier temporaire du dossier cible avant publication atomique vers
+  le chemin final.
 
 ## Différés
 
 Cette fondation ne décide pas encore de la politique commerciale définitive, ne publie pas les
-paquets et ne les connecte pas au catalogue administrable. L’intégration à une prévisualisation
-serveur ou client devra être réalisée sur une branche séparée après audit de cette chaîne locale.
+paquets et ne les connecte pas au catalogue administrable. Elle n’ajoute aucun orchestrateur de
+production, upload ou stockage objet métier. L’intégration à une prévisualisation serveur ou client
+devra être réalisée sur une branche séparée après audit de cette chaîne locale.

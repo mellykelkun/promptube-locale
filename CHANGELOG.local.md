@@ -1,5 +1,22 @@
 # Changelog local
 
+## 2026-08-01
+
+### Durcissement des frontières de ressources des paquets
+
+- Contrôle des fichiers ZIP et sources avant chargement complet : rejet des liens, fichiers
+  spéciaux, fichiers vides, tailles excessives, dépassements de nombre d’entrées et dépassements
+  cumulés sans poursuivre les lectures.
+- Application stricte du délai cumulé du paquet aux validations Markdown en cours via `AbortSignal`,
+  avec arrêt immédiat avant tout fichier suivant après expiration.
+- Réduction déterministe du `correlationId` Markdown à une empreinte bornée ne contenant ni chemin
+  complet ni contenu Markdown.
+- Publication atomique des archives : construction en mémoire, contrôle de taille, écriture dans un
+  temporaire du dossier cible, validation complète du ZIP temporaire, puis renommage final seulement
+  si le verdict est valide.
+- Correction du rapport de validation : `manifestVersion` reste `null` tant qu’aucun manifeste n’a
+  passé la validation structurelle et métier.
+
 ## 2026-07-31
 
 ### Runtime local des paquets de modules
